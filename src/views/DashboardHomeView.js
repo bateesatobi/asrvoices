@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Box } from '@mui/material';
-import DashboardHome from '../components/DashboardHome';
+import DashboardHomeElevenLabs from '../components/Redesigned/DashboardHomeElevenLabs';
 
 const DashboardHomeView = () => {
   const [userId, setUserId] = useState(null);
@@ -19,7 +19,7 @@ const DashboardHomeView = () => {
 
   return (
     <Box sx={{ width: '100%', minHeight: '100vh', background: 'transparent' }}>
-      {userId ? <DashboardHome userId={userId} /> : null}
+      {userId ? <DashboardHomeElevenLabs userId={userId} /> : null}
     </Box>
   );
 };

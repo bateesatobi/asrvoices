@@ -57,36 +57,83 @@ function VoiceCard({ speaker, isSelected, onClick }) {
 
   return (
     <Box onClick={onClick} sx={{
-      p: '10px 12px', borderRadius: '12px', cursor: 'pointer',
-      border: isSelected ? `1.5px solid ${AC}` : '1px solid rgba(17, 17, 17, 0.05)',
-      background: isSelected ? 'rgba(232, 160, 32, 0.08)' : 'rgba(17, 17, 17, 0.02)',
-      boxShadow: isSelected ? `0 0 20px -6px ${AC}55` : 'none',
-      transition: 'all 0.18s cubic-bezier(0.4,0,0.2,1)',
-      '&:hover': { background: 'rgba(232, 160, 32, 0.06)', borderColor: isSelected ? AC : 'rgba(232, 160, 32, 0.25)', transform: 'translateY(-1px)' },
+      p: 2,
+      borderRadius: '12px',
+      cursor: 'pointer',
+      border: isSelected ? `2px solid ${AC}` : '1px solid #e8e8e8',
+      background: isSelected ? 'rgba(232, 160, 32, 0.04)' : '#ffffff',
+      transition: 'all 0.2s ease',
+      '&:hover': { 
+        background: isSelected ? 'rgba(232, 160, 32, 0.04)' : '#fafafa',
+        borderColor: isSelected ? AC : '#d0d0d0',
+      },
     }}>
       <Stack direction="row" spacing={1.25} alignItems="center">
         <Box sx={{ position: 'relative', flexShrink: 0 }}>
           <Avatar sx={{
-            width: 38, height: 38, fontSize: '0.9rem', fontWeight: 900,
-            background: isSelected ? G : speaker.color,
-            border: isSelected ? `2px solid ${AC}` : '2px solid rgba(17, 17, 17, 0.08)',
+            width: 40,
+            height: 40,
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            background: isSelected ? AC : speaker.color,
+            color: isSelected ? '#ffffff' : '#666',
           }}>
             {speaker.name[0]}
           </Avatar>
           {isSelected && (
-            <Box sx={{ position: 'absolute', bottom: -3, right: -3, width: 14, height: 14, borderRadius: '50%', background: AC, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #111111' }}>
-              <CheckCircle sx={{ fontSize: 10, color: '#111111' }} />
+            <Box sx={{ 
+              position: 'absolute',
+              bottom: -2,
+              right: -2,
+              width: 16,
+              height: 16,
+              borderRadius: '50%',
+              background: AC,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '2px solid #ffffff'
+            }}>
+              <CheckCircle sx={{ fontSize: 12, color: '#ffffff' }} />
             </Box>
           )}
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={{ fontWeight: 700, fontSize: '0.82rem', color: '#111111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', mb: 0.4 }}>
+          <Typography sx={{ 
+            fontWeight: 600,
+            fontSize: '0.875rem',
+            color: '#1a1a1a',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            mb: 0.5
+          }}>
             {speaker.name}
           </Typography>
           <Stack direction="row" spacing={0.5} alignItems="center">
-            <Chip label={langName} size="small" sx={{ height: 16, fontSize: '0.58rem', fontWeight: 700, background: 'rgba(17, 17, 17, 0.06)', color: 'rgba(17, 17, 17, 0.4)', '& .MuiChip-label': { px: 0.75 } }} />
-            <Box sx={{ width: 14, height: 14, borderRadius: '50%', background: isMale ? 'rgba(96,165,250,0.15)' : 'rgba(244,114,182,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {isMale ? <Male sx={{ fontSize: 9, color: '#60a5fa' }} /> : <Female sx={{ fontSize: 9, color: '#f472b6' }} />}
+            <Chip 
+              label={langName} 
+              size="small" 
+              sx={{ 
+                height: 18,
+                fontSize: '0.6875rem',
+                fontWeight: 500,
+                background: '#f5f5f5',
+                color: '#666',
+                border: 'none',
+                '& .MuiChip-label': { px: 0.75 }
+              }} 
+            />
+            <Box sx={{ 
+              width: 16,
+              height: 16,
+              borderRadius: '50%',
+              background: isMale ? 'rgba(96,165,250,0.15)' : 'rgba(244,114,182,0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              {isMale ? <Male sx={{ fontSize: 10, color: '#60a5fa' }} /> : <Female sx={{ fontSize: 10, color: '#f472b6' }} />}
             </Box>
           </Stack>
         </Box>
@@ -96,14 +143,10 @@ function VoiceCard({ speaker, isSelected, onClick }) {
   );
 }
 
-function VoicePanel({ selectedId, onSelect, selectedLang }) {
+function VoicePanel({ selectedId, onSelect }) {
   const [search, setSearch] = useState('');
-  const [langFilter, setLangFilter] = useState(selectedLang || 'all');
+  const [langFilter, setLangFilter] = useState('all');
   const [genderFilter, setGenderFilter] = useState('all');
-
-  useEffect(() => {
-    if (selectedLang) setLangFilter(selectedLang);
-  }, [selectedLang]);
 
   const filtered = NEURAL_SPEAKERS.filter(s => {
     const ml = langFilter === 'all' || s.lang === langFilter;
@@ -118,31 +161,76 @@ function VoicePanel({ selectedId, onSelect, selectedLang }) {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: { xs: 400, md: 480 }, gap: 1.25 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, background: 'rgba(17, 17, 17, 0.04)', border: '1px solid rgba(17, 17, 17, 0.07)', borderRadius: '12px', px: 1.5, py: 0.75 }}>
-        <Search sx={{ fontSize: 15, color: 'rgba(17, 17, 17, 0.3)' }} />
-        <InputBase placeholder="Search voices…" value={search} onChange={e => setSearch(e.target.value)} sx={{ flex: 1, fontSize: '0.8rem', color: '#111111', '& input::placeholder': { color: 'rgba(17, 17, 17, 0.3)' } }} />
+      <Box sx={{ 
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1.5,
+        background: '#fafafa',
+        border: '1px solid #e8e8e8',
+        borderRadius: '8px',
+        px: 2,
+        py: 1.25
+      }}>
+        <Search sx={{ fontSize: 18, color: '#999' }} />
+        <InputBase 
+          placeholder="Search voices…" 
+          value={search} 
+          onChange={e => setSearch(e.target.value)} 
+          sx={{ 
+            flex: 1,
+            fontSize: '0.875rem',
+            color: '#1a1a1a',
+            '& input::placeholder': { color: '#999' }
+          }} 
+        />
       </Box>
 
       <Stack direction="row" spacing={0.6}>
         {[{ v: 'all', label: 'All' }, { v: 'male', label: '♂ Male' }, { v: 'female', label: '♀ Female' }].map(g => (
-          <Chip key={g.v} label={g.label} size="small" onClick={() => setGenderFilter(g.v)} sx={{
-            height: 24, fontSize: '0.68rem', fontWeight: 700, cursor: 'pointer',
-            background: genderFilter === g.v ? AC : 'rgba(17, 17, 17, 0.05)',
-            color: genderFilter === g.v ? '#fff' : 'rgba(17, 17, 17, 0.4)',
-            border: '1px solid', borderColor: genderFilter === g.v ? AC : 'rgba(17, 17, 17, 0.07)',
-          }} />
+          <Chip 
+            key={g.v} 
+            label={g.label} 
+            size="small" 
+            onClick={() => setGenderFilter(g.v)} 
+            sx={{
+              height: 26,
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              background: genderFilter === g.v ? '#1a1a1a' : '#fafafa',
+              color: genderFilter === g.v ? '#ffffff' : '#666',
+              border: '1px solid',
+              borderColor: genderFilter === g.v ? '#1a1a1a' : '#e8e8e8',
+              '&:hover': {
+                background: genderFilter === g.v ? '#333' : '#f5f5f5',
+              }
+            }} 
+          />
         ))}
       </Stack>
 
       <Box sx={{ overflowX: 'auto', '&::-webkit-scrollbar': { display: 'none' } }}>
         <Stack direction="row" spacing={0.6} sx={{ width: 'max-content' }}>
           {NEURAL_LANGUAGES.map(lang => (
-            <Chip key={lang.code} label={lang.name} size="small" onClick={() => setLangFilter(lang.code)} sx={{
-              height: 22, fontSize: '0.62rem', fontWeight: 600, cursor: 'pointer',
-              background: langFilter === lang.code ? 'rgba(232, 160, 32, 0.18)' : 'rgba(17, 17, 17, 0.04)',
-              color: langFilter === lang.code ? AC : 'rgba(17, 17, 17, 0.35)',
-              border: '1px solid', borderColor: langFilter === lang.code ? `${AC}55` : 'rgba(17, 17, 17, 0.06)',
-            }} />
+            <Chip 
+              key={lang.code} 
+              label={lang.name} 
+              size="small" 
+              onClick={() => setLangFilter(lang.code)} 
+              sx={{
+                height: 24,
+                fontSize: '0.75rem',
+                fontWeight: 500,
+                cursor: 'pointer',
+                background: langFilter === lang.code ? 'rgba(232, 160, 32, 0.1)' : '#fafafa',
+                color: langFilter === lang.code ? AC : '#666',
+                border: '1px solid',
+                borderColor: langFilter === lang.code ? `rgba(232, 160, 32, 0.3)` : '#e8e8e8',
+                '&:hover': {
+                  background: langFilter === lang.code ? 'rgba(232, 160, 32, 0.15)' : '#f5f5f5',
+                }
+              }} 
+            />
           ))}
         </Stack>
       </Box>
@@ -232,8 +320,9 @@ const SynthesisStudio = () => {
     setInputText(String(handoff.text).slice(0, 5000));
     const lang = handoff.targetLang || handoff.sourceLang;
     if (lang) {
+      setOutputLang(lang);
       const match = NEURAL_SPEAKERS.find(s => s.lang === lang);
-      if (match) { setSelectedSpeaker(match); setOutputLang(match.lang); }
+      if (match) setSelectedSpeaker(match);
     }
     setSuccessMsg('Text imported — pick a voice and generate.');
     setActiveStep(1);
@@ -444,9 +533,9 @@ const SynthesisStudio = () => {
                 <Typography sx={{ fontSize: '0.85rem', color: 'rgba(17,17,17,0.6)', fontWeight: 600 }}>
                   Pick the neural voice that will narrate your {isTextMode ? 'script' : 'document'}.
                 </Typography>
-                <UsageTip title="Voices are filtered by your chosen language. Use the play button to preview a voice before generating — switching voices is free until you hit Generate." />
+                <UsageTip title="Browse all voices by native language filter. Output language is set in the previous step — any speaker can narrate in any language." />
               </Stack>
-              <VoicePanel selectedId={selectedSpeaker.id} onSelect={handleSpeakerSelect} selectedLang={outputLang} />
+              <VoicePanel selectedId={selectedSpeaker.id} onSelect={handleSpeakerSelect} />
             </Paper>
             <StepNav onBack={handleBack} onNext={handleNext} backDisabled={false} nextDisabled={false} nextLabel="Next Step" />
           </StepContent>

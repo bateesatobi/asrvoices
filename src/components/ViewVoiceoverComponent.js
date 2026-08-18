@@ -1,18 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Button, Stack, Chip, IconButton, Tooltip, Snackbar, Alert } from '@mui/material';
+import { Box, Typography, Button, Stack, Chip, IconButton, Tooltip } from '@mui/material';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import GraphicEqIcon from '@mui/icons-material/GraphicEq';
 import { useNavigate } from 'react-router-dom';
 import { dataAPI } from '../services/api';
-import { ResultViewLayout, ResultSection, rvPrimaryButtonSx, RV_AC } from './result-view';
-import WaveformTimeline from './WaveformTimeline';
+import useExportGate from '../hooks/useExportGate';
+import {
+  ResultViewLayout, ResultSection, rvPrimaryButtonSx, RV_AC,
+  ExportCreditsChip, ResultViewSnackbar, useResultNotify, ResultShareBar,
+} from './result-view';
+import MediaTrimEditor from './MediaTrimEditor';
 
 const ViewVoiceoverComponent = ({ voiceoverId }) => {
   const [entry, setEntry] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '' });
   const navigate = useNavigate();
+  const { balance, lowCredits, exportBlockedTitle, downloadUrl, ensureCredits } = useExportGate();
+  const { snackbar, notify, closeNotify } = useResultNotify();
 
   useEffect(() => {
     let active = true;
@@ -30,13 +35,13 @@ const ViewVoiceoverComponent = ({ voiceoverId }) => {
         }
         if (active) setEntry(found);
       } catch {
-        if (active) setSnackbar({ open: true, message: 'Failed to load voiceover project' });
+        if (active) notify('Failed to load voiceover project', 'error');
       } finally {
         if (active) setLoading(false);
       }
     })();
     return () => { active = false; };
-  }, [voiceoverId]);
+  }, [voiceoverId, notify]);
 
   const videoUrl = entry?.narration_video_url || entry?.slideshow_url || (entry?.type === 'video_narration' ? entry?.video_url : null);
   const mixUrl = entry?.combined_audio_url && entry.combined_audio_url !== entry?.slideshow_url ? entry.combined_audio_url : null;
@@ -45,18 +50,9 @@ const ViewVoiceoverComponent = ({ voiceoverId }) => {
     : entry?.type === 'video_narration' ? 'Video Narration'
     : 'Narration';
 
-  const notify = (message) => setSnackbar({ open: true, message });
-
-  const download = (url) => {
+  const download = async (url) => {
     if (!url) return;
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = '';
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    notify('Download started');
+    await downloadUrl(url, notify);
   };
 
   const primaryDownloadUrl = videoUrl || mixUrl || segments.find(s => s.audio_url)?.audio_url || null;
@@ -77,28 +73,59 @@ const ViewVoiceoverComponent = ({ voiceoverId }) => {
           entry?.status && { label: entry.status === 'completed' ? 'Completed' : entry.status },
           entry?.total_blocks != null && { label: `${entry.successful ?? segments.length}/${entry.total_blocks} blocks` },
           entry?.bgm_track && { label: 'With music' },
-          entry?.credits_used != null && { label: `${Number(entry.credits_used).toFixed(1)} credits` },
+          entry?.credits_used != null && { label: `${Number(entry.credits_used).toFixed(1)} credits used` },
         ].filter(Boolean)}
-        headerActions={primaryDownloadUrl && (
-          <Button startIcon={<CloudDownloadIcon />} onClick={() => download(primaryDownloadUrl)} sx={rvPrimaryButtonSx}>
-            Download
-          </Button>
-        )}
+        headerActions={
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            <ExportCreditsChip balance={balance} lowCredits={lowCredits} />
+            <ResultShareBar
+              title={entry?.title || 'Voiceover'}
+              text={`Listen to my voiceover: ${entry?.title || 'Voiceover project'}`}
+              onNotify={notify}
+              compact
+            />
+            {primaryDownloadUrl && (
+              <Tooltip title={!lowCredits ? 'Download output' : exportBlockedTitle}>
+                <span>
+                  <Button
+                    startIcon={<CloudDownloadIcon />}
+                    onClick={() => download(primaryDownloadUrl)}
+                    disabled={lowCredits}
+                    sx={rvPrimaryButtonSx}
+                  >
+                    Download
+                  </Button>
+                </span>
+              </Tooltip>
+            )}
+          </Stack>
+        }
       >
         {videoUrl && (
-          <ResultSection title="Video">
-            <WaveformTimeline url={videoUrl} video segments={[]} />
+          <ResultSection title="Video — trim & export" defaultExpanded collapsible>
+            <MediaTrimEditor
+              url={videoUrl}
+              video
+              filename={`${(entry?.title || 'voiceover').replace(/\s+/g, '_')}_video_trim`}
+              onNotify={notify}
+              ensureExport={ensureCredits}
+            />
           </ResultSection>
         )}
 
         {mixUrl && (
-          <ResultSection title="Final Mixed Narration">
-            <WaveformTimeline url={mixUrl} segments={[]} />
+          <ResultSection title="Final mixed narration — trim" defaultExpanded={false} collapsible>
+            <MediaTrimEditor
+              url={mixUrl}
+              filename={`${(entry?.title || 'voiceover').replace(/\s+/g, '_')}_mix_trim`}
+              onNotify={notify}
+              ensureExport={ensureCredits}
+            />
           </ResultSection>
         )}
 
         {segments.length > 0 && (
-          <ResultSection title="Script Blocks">
+          <ResultSection title="Script Blocks" defaultExpanded collapsible>
             <Stack spacing={1.25}>
               {segments.map((seg, i) => {
                 const failed = seg.status && seg.status !== 'ok';
@@ -115,15 +142,31 @@ const ViewVoiceoverComponent = ({ voiceoverId }) => {
                               <PlayArrowIcon sx={{ fontSize: 15 }} />
                             </IconButton>
                           </Tooltip>
-                          <Tooltip title="Download">
-                            <IconButton size="small" onClick={() => download(seg.audio_url)} sx={{ background: 'rgba(16,185,129,0.1)', color: '#10b981', p: 0.5 }}>
-                              <CloudDownloadIcon sx={{ fontSize: 15 }} />
-                            </IconButton>
+                          <Tooltip title={!lowCredits ? 'Download block' : exportBlockedTitle}>
+                            <span>
+                              <IconButton
+                                size="small"
+                                onClick={() => download(seg.audio_url)}
+                                disabled={lowCredits}
+                                sx={{ background: 'rgba(16,185,129,0.1)', color: '#10b981', p: 0.5 }}
+                              >
+                                <CloudDownloadIcon sx={{ fontSize: 15 }} />
+                              </IconButton>
+                            </span>
                           </Tooltip>
                         </Stack>
                       )}
                     </Stack>
-                    {seg.text && <Typography sx={{ fontSize: '0.85rem', color: '#111111' }}>{seg.text}</Typography>}
+                    {seg.text && <Typography sx={{ fontSize: '0.85rem', color: '#111111', mb: seg.audio_url ? 1.5 : 0 }}>{seg.text}</Typography>}
+                    {seg.audio_url && (
+                      <MediaTrimEditor
+                        url={seg.audio_url}
+                        filename={`${(entry?.title || 'voiceover').replace(/\s+/g, '_')}_block_${i + 1}`}
+                        onNotify={notify}
+                        ensureExport={ensureCredits}
+                        height={64}
+                      />
+                    )}
                   </Box>
                 );
               })}
@@ -132,9 +175,7 @@ const ViewVoiceoverComponent = ({ voiceoverId }) => {
         )}
       </ResultViewLayout>
 
-      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ open: false, message: '' })} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        <Alert severity="info" onClose={() => setSnackbar({ open: false, message: '' })} sx={{ borderRadius: '12px' }}>{snackbar.message}</Alert>
-      </Snackbar>
+      <ResultViewSnackbar {...snackbar} onClose={closeNotify} />
     </>
   );
 };

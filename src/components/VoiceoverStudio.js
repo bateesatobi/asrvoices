@@ -143,16 +143,10 @@ function VoiceCard({ speaker, isSelected, onClick }) {
 }
 
 /* ─── Voice Panel ─────────────────────────────────────────────────────────── */
-function VoicePanel({ selectedId, onSelect, selectedLang }) {
+function VoicePanel({ selectedId, onSelect }) {
   const [search, setSearch]             = useState('');
-  const [langFilter, setLangFilter]     = useState(selectedLang || 'all');
+  const [langFilter, setLangFilter]     = useState('all');
   const [genderFilter, setGenderFilter] = useState('all');
-
-  useEffect(() => {
-    if (selectedLang) {
-      setLangFilter(selectedLang);
-    }
-  }, [selectedLang]);
 
   const filtered = NEURAL_SPEAKERS.filter(s => {
     const ml = langFilter === 'all' || s.lang === langFilter;
@@ -519,13 +513,12 @@ export default function VoiceoverStudio({ userId }) {
   useEffect(() => {
     const handoff = consumePipeline('voiceover');
     if (!handoff?.text) return;
-    const lang = handoff.targetLang || handoff.sourceLang;
-    const match = NEURAL_SPEAKERS.find(s => s.lang === lang);
+    const lang = handoff.targetLang || handoff.sourceLang || NEURAL_SPEAKERS[0].lang;
+    setSelectedLang(lang);
     setMode('narration');
     setBlocks([{
-      ...DEFAULT_BLOCK(match?.lang || NEURAL_SPEAKERS[0].lang),
+      ...DEFAULT_BLOCK(lang),
       text: String(handoff.text),
-      voice: match?.id || NEURAL_SPEAKERS[0].id,
     }]);
     setActiveStep(1);
   }, []);
@@ -555,10 +548,7 @@ export default function VoiceoverStudio({ userId }) {
   }, []);
 
   useEffect(() => {
-    // Update all blocks' language and default speaker when selectedLang changes
-    const defaultSpeaker = NEURAL_SPEAKERS.find(s => s.lang === selectedLang) || NEURAL_SPEAKERS[0];
-    setActiveVoice(defaultSpeaker);
-    setBlocks(prev => prev.map(b => ({ ...b, language: selectedLang, voice: defaultSpeaker.id })));
+    setBlocks(prev => prev.map(b => ({ ...b, language: selectedLang })));
   }, [selectedLang]);
 
   useEffect(() => {
@@ -835,8 +825,7 @@ export default function VoiceoverStudio({ userId }) {
 
   const handleVoiceSelect = s => {
     setActiveVoice(s);
-    // Apply selected voice to all blocks to ensure consistency across the slideshow/narration
-    setBlocks(prev => prev.map(b => ({ ...b, voice: s.id, language: selectedLang })));
+    setBlocks(prev => prev.map(b => ({ ...b, voice: s.id })));
   };
 
   const focusedBlock = blocks.find(b => b.id === focusedBlockId) || blocks[0];
@@ -979,7 +968,7 @@ export default function VoiceoverStudio({ userId }) {
                     </FormControl>
                     <UsageTip
                       placement="right"
-                      title="This sets the language for your narration blocks and filters which voices show up in the next step."
+                      title="Sets the spoken language for your blocks. Pick any voice in the next step — speaker native language and output language are independent."
                     />
                   </Stack>
                   <Button size="small" startIcon={<AddIcon sx={{ fontSize: 14 }} />} onClick={addBlock} sx={{ color: AC, fontWeight: 800, textTransform: 'none', fontSize: '0.77rem', '&:hover': { background: 'rgba(232,160,32,0.08)' } }}>
@@ -1021,7 +1010,7 @@ export default function VoiceoverStudio({ userId }) {
               </Typography>
               <Grid container spacing={3}>
                 <Grid item xs={12} md={12} lg={12}>
-                  <VoicePanel selectedId={focusedBlock?.voice || activeVoice.id} onSelect={handleVoiceSelect} selectedLang={selectedLang} />
+                  <VoicePanel selectedId={focusedBlock?.voice || activeVoice.id} onSelect={handleVoiceSelect} />
                 </Grid>
               </Grid>
               <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>

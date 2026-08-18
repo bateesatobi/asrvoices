@@ -2,6 +2,7 @@ import React from 'react';
 import ResultsTable from './ResultsTable';
 import VaultDateCell from './VaultDateCell';
 import { TitleCell, StatusChip, LangChip, MetaText } from './vault/VaultTableCells';
+import { getProcessingStartedAt } from '../utils/mediaVault';
 import { formatDurationMins, defaultVaultSearch } from '../utils/mediaVault';
 import { dataAPI } from '../services/api';
 import { VAULT_CACHE_KEYS } from '../utils/vaultCache';
@@ -32,7 +33,9 @@ const columns = [
   },
   {
     id: 'status', label: 'Status', sortable: true,
-    render: row => <StatusChip status={row.status} />,
+    render: row => (
+      <StatusChip status={row.status} startedAt={getProcessingStartedAt(row)} progress={row.progress} />
+    ),
   },
   {
     id: 'Date', label: 'Date', sortable: true,

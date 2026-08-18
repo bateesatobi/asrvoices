@@ -5,7 +5,7 @@ import {
   TableRow, Checkbox, TextField, IconButton,
   Typography, Button, Tooltip, TableSortLabel, Snackbar, Alert,
   Menu, MenuItem, Stack, InputAdornment, ListItemIcon, Select, FormControl,
-  useMediaQuery, useTheme, Card, Divider, Grid, Chip
+  useMediaQuery, useTheme, Divider,
 } from '@mui/material';
 import {
   InboxOutlined,
@@ -135,7 +135,7 @@ export default function ResultsTable({
   useEffect(() => {
     const hasProcessing = entries.some(r => isProcessingStatus(r.status));
     if (!hasProcessing) return undefined;
-    const iv = setInterval(() => fetchData({ force: true, silent: true }), 15000);
+    const iv = setInterval(() => fetchData({ force: true, silent: true }), 4000);
     return () => clearInterval(iv);
   }, [entries, fetchData]);
 
@@ -381,46 +381,11 @@ export default function ResultsTable({
           </Box>
         ) : (
         <Box sx={{ opacity: refreshing ? 0.92 : 1, transition: 'opacity 0.15s ease' }}>
-        {isMobile ? (
-          /* ---- Mobile Card View ---- */
-          <Stack spacing={2}>
-            {displayed.map(row => (
-              <Card key={row.doc_id} sx={{ 
-                p: 2, bgcolor: 'rgba(17, 17, 17,0.02)', border: '1px solid rgba(17, 17, 17, 0.05)', borderRadius: '12px',
-                '&:hover': { background: 'rgba(17, 17, 17,0.04)' }
-              }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.5}>
-                  <Checkbox size="small" checked={selected.includes(row.doc_id)} onChange={() => toggleSelect(row.doc_id)} sx={{ p: 0.5 }} />
-                  <Stack direction="row" spacing={0.5}>
-                    {getAssetDownloadUrl(row) && (
-                      <IconButton size="small" component="a" href={getAssetDownloadUrl(row)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
-                        <DownloadIcon sx={{ fontSize: 18, color: AC }} />
-                      </IconButton>
-                    )}
-                    <IconButton size="small" onClick={() => handleView(row.doc_id, row)}><Visibility sx={{ fontSize: 18, color: AC }} /></IconButton>
-                    <IconButton size="small" onClick={e => { setAnchor(e.currentTarget); setActiveRow(row); }}><MoreVert sx={{ fontSize: 18 }} /></IconButton>
-                  </Stack>
-                </Stack>
-                <Box onClick={() => handleView(row.doc_id, row)} sx={{ cursor: 'pointer' }}>
-                  {columns.map(col => (
-                    <Box key={col.id} sx={{ mb: 1.5, '&:last-child': { mb: 0 } }}>
-                      <Typography variant="caption" sx={{ color: 'rgba(17, 17, 17,0.3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', mb: 0.3 }}>
-                        {col.label}
-                      </Typography>
-                      {col.render ? col.render(row) : <Typography variant="body2" sx={{ color: '#111111' }}>{row[col.id] || '—'}</Typography>}
-                    </Box>
-                  ))}
-                </Box>
-              </Card>
-            ))}
-          </Stack>
-        ) : (
-          /* ---- Desktop Card Grid View ---- */
-          <>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
-              <Typography sx={{ fontSize: '0.78rem', color: 'rgba(17,17,17,0.45)', fontWeight: 700 }}>
-                {filtered.length} assets
-              </Typography>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5, px: 0.5 }}>
+            <Typography sx={{ fontSize: '0.78rem', color: 'rgba(17,17,17,0.45)', fontWeight: 700 }}>
+              {filtered.length} {filtered.length === 1 ? 'item' : 'items'}
+            </Typography>
+            {!isMobile && (
               <Button
                 size="small"
                 variant="text"
@@ -429,67 +394,107 @@ export default function ResultsTable({
               >
                 {selected.length === filtered.length ? 'Clear selection' : 'Select all'}
               </Button>
-            </Stack>
-            <Grid container spacing={2}>
-              {displayed.map(row => (
-                <Grid item xs={12} sm={6} lg={4} key={row.doc_id}>
-                  <Card sx={{
-                    p: 2, bgcolor: 'rgba(17, 17, 17,0.02)', border: '1px solid rgba(17, 17, 17, 0.05)', borderRadius: '14px',
-                    transition: 'all .2s ease',
-                    boxShadow: '0 1px 0 rgba(17,17,17,0.02)',
-                    '&:hover': { background: 'rgba(17, 17, 17,0.035)', transform: 'translateY(-1px)', boxShadow: '0 10px 30px rgba(17,17,17,0.08)' }
-                  }}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.25}>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Checkbox size="small" checked={selected.includes(row.doc_id)} onChange={() => toggleSelect(row.doc_id)} sx={{ p: 0.5 }} />
-                        <Chip
-                          size="small"
-                          label={isProcessingStatus(row.status) ? 'Processing' : (row.status || 'Complete')}
-                          sx={{
-                            height: 22,
-                            fontSize: '0.66rem',
-                            fontWeight: 700,
-                            bgcolor: isProcessingStatus(row.status) ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.12)',
-                            color: isProcessingStatus(row.status) ? '#b45309' : '#059669',
-                            border: `1px solid ${isProcessingStatus(row.status) ? 'rgba(245,158,11,0.25)' : 'rgba(16,185,129,0.22)'}`,
-                          }}
-                        />
-                      </Stack>
-                      <Stack direction="row" spacing={0.5}>
+            )}
+          </Stack>
+          <TableContainer sx={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid rgba(17,17,17,0.06)' }}>
+            <Table size="small" sx={{ minWidth: isMobile ? 640 : 720 }}>
+              <TableHead>
+                <TableRow sx={{ bgcolor: 'rgba(17,17,17,0.03)' }}>
+                  <TableCell padding="checkbox" sx={{ width: 44 }}>
+                    <Checkbox
+                      size="small"
+                      indeterminate={selected.length > 0 && selected.length < filtered.length}
+                      checked={filtered.length > 0 && selected.length === filtered.length}
+                      onChange={toggleSelectAll}
+                    />
+                  </TableCell>
+                  {columns.map(col => (
+                    <TableCell
+                      key={col.id}
+                      sortDirection={orderBy === col.id ? order : false}
+                      sx={{ fontWeight: 700, fontSize: '0.72rem', color: 'rgba(17,17,17,0.5)', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}
+                    >
+                      {col.sortable !== false ? (
+                        <TableSortLabel
+                          active={orderBy === col.id}
+                          direction={orderBy === col.id ? order : 'asc'}
+                          onClick={() => handleSort(col.id)}
+                        >
+                          {col.label}
+                        </TableSortLabel>
+                      ) : (
+                        col.label
+                      )}
+                    </TableCell>
+                  ))}
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.72rem', color: 'rgba(17,17,17,0.5)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 120 }}>
+                    Actions
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {displayed.map(row => (
+                  <TableRow
+                    key={row.doc_id}
+                    hover
+                    selected={selected.includes(row.doc_id)}
+                    sx={{
+                      cursor: 'pointer',
+                      '&:last-child td': { borderBottom: 0 },
+                      '&:hover': { bgcolor: 'rgba(232,160,32,0.04)' },
+                    }}
+                    onClick={() => handleView(row.doc_id, row)}
+                  >
+                    <TableCell padding="checkbox" onClick={e => e.stopPropagation()}>
+                      <Checkbox
+                        size="small"
+                        checked={selected.includes(row.doc_id)}
+                        onChange={() => toggleSelect(row.doc_id)}
+                      />
+                    </TableCell>
+                    {columns.map(col => (
+                      <TableCell key={col.id} sx={{ fontSize: '0.875rem', color: '#1a1a1a', verticalAlign: 'middle', maxWidth: isMobile ? 180 : 280 }}>
+                        {col.render ? col.render(row) : (row[col.id] || '—')}
+                      </TableCell>
+                    ))}
+                    <TableCell align="right" onClick={e => e.stopPropagation()} sx={{ whiteSpace: 'nowrap' }}>
+                      <Stack direction="row" spacing={0.25} justifyContent="flex-end">
                         {getAssetDownloadUrl(row) && (
-                          <IconButton size="small" component="a" href={getAssetDownloadUrl(row)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
-                            <DownloadIcon sx={{ fontSize: 18, color: AC }} />
-                          </IconButton>
+                          <Tooltip title="Download">
+                            <IconButton
+                              size="small"
+                              component="a"
+                              href={getAssetDownloadUrl(row)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <DownloadIcon sx={{ fontSize: 18, color: AC }} />
+                            </IconButton>
+                          </Tooltip>
                         )}
-                        <IconButton size="small" onClick={() => handleView(row.doc_id, row)}>
-                          <Visibility sx={{ fontSize: 18, color: AC }} />
-                        </IconButton>
-                        <IconButton size="small" onClick={e => { setAnchor(e.currentTarget); setActiveRow(row); }}>
-                          <MoreVert sx={{ fontSize: 18 }} />
-                        </IconButton>
+                        <Tooltip title="View">
+                          <IconButton size="small" onClick={() => handleView(row.doc_id, row)}>
+                            <Visibility sx={{ fontSize: 18, color: AC }} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="More">
+                          <IconButton
+                            size="small"
+                            onClick={e => {
+                              setAnchor(e.currentTarget);
+                              setActiveRow(row);
+                            }}
+                          >
+                            <MoreVert sx={{ fontSize: 18 }} />
+                          </IconButton>
+                        </Tooltip>
                       </Stack>
-                    </Stack>
-                    <Typography sx={{ fontSize: '0.72rem', color: 'rgba(17,17,17,0.45)', fontWeight: 600, mb: 1 }}>
-                      {new Date(getEntryDate(row) || Date.now()).toLocaleString()}
-                    </Typography>
-                    <Box onClick={() => handleView(row.doc_id, row)} sx={{ cursor: 'pointer' }}>
-                      {columns.map(col => (
-                        <Box key={col.id} sx={{ mb: 1.2, '&:last-child': { mb: 0 } }}>
-                          <Typography variant="caption" sx={{ color: 'rgba(17,17,17,0.35)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', mb: 0.25 }}>
-                            {col.label}
-                          </Typography>
-                          {col.render
-                            ? col.render(row)
-                            : <Typography variant="body2" sx={{ color: '#111111' }}>{row[col.id] || '—'}</Typography>}
-                        </Box>
-                      ))}
-                    </Box>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          </>
-        )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </Box>
         )}
 

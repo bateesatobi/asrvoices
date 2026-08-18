@@ -3,6 +3,7 @@ import { Chip, Stack } from '@mui/material';
 import ResultsTable from './ResultsTable';
 import VaultDateCell from './VaultDateCell';
 import { TitleCell, StatusChip, MetaText } from './vault/VaultTableCells';
+import { getProcessingStartedAt } from '../utils/mediaVault';
 import {
   formatDurationMins, defaultVaultSearch, getDubbingDisplayTitle, getDubbingTargetLangs, langLabel,
 } from '../utils/mediaVault';
@@ -49,7 +50,9 @@ const columns = [
   },
   {
     id: 'status', label: 'Status', sortable: true,
-    render: row => <StatusChip status={row.status} />,
+    render: row => (
+      <StatusChip status={row.status} startedAt={getProcessingStartedAt(row)} progress={row.progress} />
+    ),
   },
   {
     id: 'date', label: 'Date', sortable: true,

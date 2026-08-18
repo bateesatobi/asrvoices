@@ -1,0 +1,285 @@
+/* 
+ * ElevenLabs Design System Overrides
+ * Global styles to match ElevenLabs design patterns
+ */
+
+/* ── Typography ─────────────────────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  letter-spacing: -0.02em;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+/* ── Smooth scrollbar (ElevenLabs-style) ───────────────────────────── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #fafafa;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #e8e8e8;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #d0d0d0;
+}
+
+/* ── Card hover effects ────────────────────────────────────────────── */
+.elevenlabs-card {
+  background: #ffffff;
+  border: 1px solid #e8e8e8;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.elevenlabs-card:hover {
+  border-color: #d0d0d0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* ── Button styles ─────────────────────────────────────────────────── */
+.elevenlabs-button-primary {
+  background: #1a1a1a;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 24px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.elevenlabs-button-primary:hover {
+  background: #333333;
+  transform: translateY(-1px);
+}
+
+.elevenlabs-button-secondary {
+  background: transparent;
+  color: #1a1a1a;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 10px 24px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.elevenlabs-button-secondary:hover {
+  background: #fafafa;
+  border-color: #d0d0d0;
+}
+
+/* ── Input fields ──────────────────────────────────────────────────── */
+.elevenlabs-input {
+  background: #fafafa;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 0.9375rem;
+  color: #1a1a1a;
+  transition: all 0.2s ease;
+}
+
+.elevenlabs-input:hover {
+  border-color: #d0d0d0;
+}
+
+.elevenlabs-input:focus {
+  outline: none;
+  border-color: #1a1a1a;
+  border-width: 2px;
+  background: #ffffff;
+}
+
+/* ── Tabs ──────────────────────────────────────────────────────────── */
+.elevenlabs-tabs {
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.elevenlabs-tab {
+  padding: 16px 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #666666;
+  text-transform: none;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.elevenlabs-tab:hover {
+  color: #1a1a1a;
+  background: rgba(0,0,0,0.02);
+}
+
+.elevenlabs-tab.active {
+  color: #1a1a1a;
+  border-bottom-color: #1a1a1a;
+}
+
+/* ── Modal overlays ────────────────────────────────────────────────── */
+.elevenlabs-modal-backdrop {
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(4px);
+}
+
+.elevenlabs-modal {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: auto;
+}
+
+/* ── Table styles ──────────────────────────────────────────────────── */
+.elevenlabs-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.elevenlabs-table thead th {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #999999;
+  padding: 16px;
+  text-align: left;
+  border-bottom: 1px solid #e8e8e8;
+  background: #fafafa;
+}
+
+.elevenlabs-table tbody td {
+  font-size: 0.875rem;
+  color: #1a1a1a;
+  padding: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.elevenlabs-table tbody tr:hover {
+  background: #fafafa;
+}
+
+.elevenlabs-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ── Chip/Badge styles ─────────────────────────────────────────────── */
+.elevenlabs-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  background: #fafafa;
+  color: #666666;
+  border: 1px solid #e8e8e8;
+}
+
+.elevenlabs-chip-gold {
+  background: rgba(232,160,32,0.1);
+  color: #C47F10;
+  border-color: rgba(232,160,32,0.2);
+}
+
+/* ── Loading states ────────────────────────────────────────────────── */
+.elevenlabs-skeleton {
+  background: linear-gradient(90deg, #f5f5f5 0%, #e8e8e8 50%, #f5f5f5 100%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ── Progress bars ─────────────────────────────────────────────────── */
+.elevenlabs-progress {
+  width: 100%;
+  height: 6px;
+  background: #e8e8e8;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.elevenlabs-progress-bar {
+  height: 100%;
+  background: #1a1a1a;
+  transition: width 0.3s ease;
+}
+
+/* ── Dividers ──────────────────────────────────────────────────────── */
+.elevenlabs-divider {
+  border: none;
+  border-top: 1px solid #e8e8e8;
+  margin: 24px 0;
+}
+
+/* ── Focus rings (accessibility) ───────────────────────────────────── */
+*:focus-visible {
+  outline: 2px solid #E8A020;
+  outline-offset: 2px;
+}
+
+/* ── Animations ────────────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* ── Responsive utilities ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .elevenlabs-modal {
+    max-width: 100%;
+    margin: 0;
+    border-radius: 16px 16px 0 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+}

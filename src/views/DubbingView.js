@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Container } from '@mui/material';
-import VideoDubbingStudio from '../components/VideoDubbingStudio';
+import { Box } from '@mui/material';
+import VideoVoiceoverElevenLabs from '../components/Redesigned/VideoVoiceoverElevenLabs';
 
 const DubbingView = () => {
   const [userId, setUserId] = useState(null);
@@ -11,10 +11,8 @@ const DubbingView = () => {
   }, []);
 
   return (
-    <Box sx={{ width: '100%', minHeight: '100vh', background: 'transparent' }}>
-      <Container maxWidth="xl">
-        {userId && <VideoDubbingStudio userId={userId} />}
-      </Container>
+    <Box sx={{ width: '100%', height: '100%', minHeight: 0, background: 'transparent' }}>
+      {userId && <VideoVoiceoverElevenLabs userId={userId} />}
     </Box>
   );
 };

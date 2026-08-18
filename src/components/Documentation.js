@@ -514,7 +514,7 @@ const ParametersSection = ({ parameters }) => {
 };
 
 const generateCodeSnippets = (endpoint) => {
-  const baseUrl = 'https://phosai-backend-api-fq4x.onrender.com';
+  const baseUrl = 'https://phosai-backend-api-1.onrender.com';
   const isJson = endpoint.parameters?.type === "application/json";
   const isWs = endpoint.parameters?.type === "websocket";
   const isClone = endpoint.parameters?.type === "multipart/form-data-clone";

@@ -21,6 +21,7 @@ import {
   MusicNote,
   CheckCircle
 } from '@mui/icons-material';
+import { BASE_URL } from '../services/api';
 
 const AC = '#E8A020';
 
@@ -37,7 +38,7 @@ export function BGMCard({ track, isSelected, onSelect, onPreview, isPlaying, onS
     setLoading(true);
     try {
       // Fetch and play BGM track
-      const response = await fetch(`/bgm-stream/${track.filename}`);
+      const response = await fetch(`${BASE_URL}/bgm-stream/${track.filename}`);
       if (response.ok) {
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);

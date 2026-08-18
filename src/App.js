@@ -39,9 +39,12 @@ import Chatbot from "./components/Chatbot";
 import UpgradePromptModal from "./components/UpgradePromptModal";
 import GlobalSnackbar from "./components/GlobalSnackbar";
 import GlobalProgressIndicator from "./components/GlobalProgressIndicator";
+import BackgroundJobWatcher from "./components/BackgroundJobWatcher";
 import DubbingView from "./views/DubbingView";
 import VoiceoverView from "./views/VoiceoverView";
 import DashboardHomeView from "./views/DashboardHomeView";
+import VoicesView from "./views/VoicesView";
+import SoundtracksView from "./views/SoundtracksView";
 import ViewDubbing from "./views/ViewDubbing";
 import ViewVoiceover from "./views/ViewVoiceover";
 import RouteSEO from "./components/RouteSEO";
@@ -71,9 +74,10 @@ function App() {
           <Route path="/dashboard" element={<PrivateRoute><TourProvider><Sidenav /></TourProvider></PrivateRoute>}>
             <Route index element={<Navigate replace to="home" />} />
             <Route path="home" element={<ErrorBoundary><DashboardHomeView /></ErrorBoundary>} />
+            <Route path="voices" element={<ErrorBoundary><VoicesView /></ErrorBoundary>} />
+            <Route path="soundtracks" element={<ErrorBoundary><SoundtracksView /></ErrorBoundary>} />
             <Route path="agents" element={<ErrorBoundary><LiveStream /></ErrorBoundary>} />
             <Route path="conversational-ai" element={<ErrorBoundary><VideoStream /></ErrorBoundary>} />
-            <Route path="history" element={<ErrorBoundary><History /></ErrorBoundary>} />
             <Route path="usage" element={<ErrorBoundary><UsageView /></ErrorBoundary>} />
             <Route path="transcribe" element={<ErrorBoundary><Transcribe /></ErrorBoundary>} />
             <Route path="video-transcribe" element={<ErrorBoundary><VideoStream /></ErrorBoundary>} />
@@ -98,12 +102,12 @@ function App() {
             <Route path="api-reference" element={<ErrorBoundary><APIReference /></ErrorBoundary>} />
             <Route path="lang-support" element={<ErrorBoundary><LanguageSupport /></ErrorBoundary>} />
             <Route path="contact-support" element={<ErrorBoundary><ContactSupport /></ErrorBoundary>} />
-            <Route path="voice-clone" element={<ErrorBoundary><VoiceCloning /></ErrorBoundary>} />
-            <Route path="dubbing" element={<ErrorBoundary><DubbingView /></ErrorBoundary>} />
-            <Route path="voiceovers" element={<ErrorBoundary><VoiceoverView /></ErrorBoundary>} />
+            <Route path="voice-cloning" element={<ErrorBoundary><VoiceCloning /></ErrorBoundary>} />
+            <Route path="video-voiceover" element={<ErrorBoundary><DubbingView /></ErrorBoundary>} />
           </Route>
         </Routes>
         <GlobalProgressIndicator />
+        <BackgroundJobWatcher />
         <GlobalSnackbar />
         {/* <Chatbot/> */}
         <UpgradePromptModal />

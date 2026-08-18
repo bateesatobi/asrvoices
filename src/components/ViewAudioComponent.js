@@ -1,24 +1,21 @@
 import React, { useEffect, useState, useCallback } from "react";
 import {
-  Box, Typography, IconButton, Chip, Stack, Tooltip, Button, TextField, Alert,
+  Box, Typography, IconButton, Chip, Stack, Tooltip, Alert,
 } from "@mui/material";
 import DownloadIcon from '@mui/icons-material/Download';
 import LanguageIcon from '@mui/icons-material/Language';
 import GraphicEqIcon from '@mui/icons-material/GraphicEq';
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
-import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
-import CloseIcon from '@mui/icons-material/Close';
-import { transcriptionAPI } from '../services/api';
+import { transcriptionAPI, videoAPI } from '../services/api';
 import AudioPlayerComponent from "./AudioPlayerComponent";
+import MediaTrimEditor from './MediaTrimEditor';
 import { useNavigate } from 'react-router-dom';
+import useExportGate from '../hooks/useExportGate';
+import { getLanguageDisplayName, resolveMediaAudioUrl, resolveOriginalTranscript, isTranscriptionProcessing } from '../utils/translationViewHelpers';
 import {
-  ResultViewLayout, ResultSection, ResultLangAccordion, ResultCodeBlock,
-  rvLangChipSx, RV_AC,
+  ResultViewLayout, ResultSection, ResultLangAccordion, ResultCodeBlock, ResultTextPanel,
+  rvLangChipSx, RV_AC, ExportCreditsChip, ResultViewSnackbar, useResultNotify, ResultShareBar,
 } from './result-view';
 import SendToStudioButton from './SendToStudioButton';
-
-const LANG_NAMES = { en: 'English', lg: 'Luganda', at: 'Ateso', ac: 'Acholi', nyn: 'Runyankore', fr: 'French', es: 'Spanish', sw: 'Swahili', rw: 'Kinyarwanda' };
-const getLangName = (code) => LANG_NAMES[code] || (code || 'Unknown').toUpperCase();
 
 const getStoredUserId = () => {
   try {
@@ -40,11 +37,12 @@ const ViewAudioComponent = ({ audioId, embedded = false, onError }) => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState(0);
   const [availableLanguages, setAvailableLanguages] = useState([]);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editText, setEditText] = useState('');
+  const [editedTexts, setEditedTexts] = useState({});
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState(null);
   const navigate = useNavigate();
+  const { balance, lowCredits, exportBlockedTitle, copyText, downloadBlob, ensureCredits } = useExportGate();
+  const { snackbar, notify, closeNotify } = useResultNotify();
 
   const renderTranslationContent = (data) => {
     if (typeof data === 'string') return data;
@@ -65,20 +63,37 @@ const ViewAudioComponent = ({ audioId, embedded = false, onError }) => {
     setError(null);
     try {
       const response = await transcriptionAPI.getAudio(audioId);
-      const data = response.entries;
-      setEntries(data);
-      if (data.length > 0 && data[0].Url) {
-        setAudioSource(data[0].Url[0].audio_file_url);
-        setDate(data[0].Date);
-        setTitle(data[0].title);
-        const langs = Object.keys(data[0].Translations || {});
-        setAvailableLanguages(langs);
-        if (langs.length > 0) {
-          setSelectedLanguage(langs[0]);
-          updateSegmentDisplay(data[0].Translations[langs[0]], 0);
+      let data = response.entries || [];
+
+      // Video transcriptions live in video_store — redirect instead of showing empty.
+      if (!data.length) {
+        try {
+          const videoRes = await videoAPI.getVideo(audioId);
+          if (videoRes.entries?.length) {
+            navigate(`/dashboard/video/${audioId}`, { replace: true });
+            return;
+          }
+        } catch {
+          /* not a video job */
         }
-      } else {
-        setError("Audio source not available.");
+      }
+
+      setEntries(data);
+      if (data.length === 0) return;
+
+      const entry = data[0];
+      const audioUrl = resolveMediaAudioUrl(entry);
+      if (audioUrl) setAudioSource(audioUrl);
+
+      setDate(entry.Date || entry.date);
+      setTitle(entry.title || entry.fileName || 'Audio Transcription');
+
+      const langs = Object.keys(entry.Translations || entry.translations || {});
+      setAvailableLanguages(langs);
+      if (langs.length > 0) {
+        setSelectedLanguage(langs[0]);
+        const translations = entry.Translations || entry.translations;
+        updateSegmentDisplay(translations[langs[0]], 0);
       }
     } catch {
       const msg = "Failed to fetch audio data.";
@@ -87,60 +102,56 @@ const ViewAudioComponent = ({ audioId, embedded = false, onError }) => {
     } finally {
       setLoading(false);
     }
-  }, [audioId, onError]);
+  }, [audioId, onError, navigate]);
 
   useEffect(() => {
     loadAudio();
   }, [loadAudio]);
 
-  const handleDownloadTranscript = () => {
+  // Poll while the backend is still transcribing.
+  useEffect(() => {
+    const entry = entries[0];
+    if (!entry || !isTranscriptionProcessing(entry)) return undefined;
+    const iv = setInterval(loadAudio, 4000);
+    return () => clearInterval(iv);
+  }, [entries, loadAudio]);
+
+  const handleDownloadTranscript = async () => {
     if (!entries.length || !selectedLanguage) return;
     const data = entries[0].Translations[selectedLanguage];
     const text = typeof data === 'string' ? data : Array.isArray(data) ? data.map(s => s.text).join('\n\n') : "No transcript";
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `transcript_${selectedLanguage}_${audioTitle}.txt`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    await downloadBlob(text, `transcript_${selectedLanguage}_${audioTitle}.txt`, 'text/plain', notify);
   };
 
-  const handleCopy = (text) => { navigator.clipboard.writeText(text).catch(() => {}); };
-
   const entry = entries[0];
-  const originalText = entry?.Original_transcript || entry?.original_transcript || entry?.OriginalTranscript || '';
+  const baseOriginal = resolveOriginalTranscript(entry);
+  const originalText = editedTexts.original ?? baseOriginal;
+  const stillProcessing = entry && isTranscriptionProcessing(entry);
+  const audioWarning = entry && !audioSource && !stillProcessing && !baseOriginal
+    ? null
+    : entry && !audioSource && !stillProcessing && baseOriginal
+      ? 'Audio file is unavailable, but your transcript is shown below.'
+      : null;
+
+  const getLangText = (code) => {
+    if (editedTexts[code] != null) return editedTexts[code];
+    return renderTranslationContent(entry?.Translations?.[code]);
+  };
 
   const pipelineText = () => {
     if (selectedLanguage && entry?.Translations?.[selectedLanguage]) {
-      return renderTranslationContent(entry.Translations[selectedLanguage]);
+      return getLangText(selectedLanguage);
     }
     return originalText || '';
   };
   const pipelineLang = selectedLanguage || entry?.source_lang || 'en';
 
-  const handleStartEdit = () => {
-    setEditText(originalText);
-    setIsEditing(true);
-    setSaveMsg(null);
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-    setEditText('');
-    setSaveMsg(null);
-  };
-
-  const handleSaveEdit = async () => {
+  const handleSaveOriginal = async (trimmed) => {
     const userId = getStoredUserId();
     if (!userId) {
       setSaveMsg({ type: 'error', text: 'Please log in again to save changes.' });
-      return;
+      throw new Error('not authenticated');
     }
-    const trimmed = editText.trim();
-    if (!trimmed) {
-      setSaveMsg({ type: 'error', text: 'Transcript cannot be empty.' });
-      return;
-    }
-
     setSaving(true);
     setSaveMsg(null);
     try {
@@ -155,7 +166,7 @@ const ViewAudioComponent = ({ audioId, embedded = false, onError }) => {
         next[0] = updated;
         return next;
       });
-      setIsEditing(false);
+      setEditedTexts(prev => ({ ...prev, original: trimmed }));
       setSaveMsg({ type: 'success', text: 'Transcript saved.' });
       window.dispatchEvent(new CustomEvent('library-updated'));
     } catch (e) {
@@ -163,54 +174,22 @@ const ViewAudioComponent = ({ audioId, embedded = false, onError }) => {
         type: 'error',
         text: e.response?.data?.detail || 'Could not save transcript. Please try again.',
       });
+      throw e;
     } finally {
       setSaving(false);
     }
   };
 
-  const transcriptActions = (
-    <Stack direction="row" spacing={0.5} alignItems="center">
-      {!isEditing ? (
-        <Tooltip title="Edit transcript">
-          <IconButton
-            size="small"
-            onClick={handleStartEdit}
-            disabled={!originalText && !loading}
-            sx={{ color: 'rgba(17, 17, 17, 0.35)', '&:hover': { color: RV_AC, background: 'rgba(232, 160, 32, 0.08)' } }}
-          >
-            <EditOutlinedIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-      ) : (
-        <>
-          <Button
-            size="small"
-            variant="contained"
-            startIcon={<SaveOutlinedIcon sx={{ fontSize: 16 }} />}
-            onClick={handleSaveEdit}
-            disabled={saving}
-            sx={{
-              textTransform: 'none', fontWeight: 800, fontSize: '0.72rem', borderRadius: '8px',
-              background: 'linear-gradient(135deg, #E8A020, #C47F10)', color: '#111', boxShadow: 'none',
-              '&:hover': { opacity: 0.92, boxShadow: 'none' },
-            }}
-          >
-            {saving ? 'Saving…' : 'Save'}
-          </Button>
-          <IconButton size="small" onClick={handleCancelEdit} disabled={saving} sx={{ color: 'rgba(17, 17, 17, 0.4)' }}>
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </>
-      )}
-    </Stack>
-  );
+  const pageTitle = audioTitle || 'Audio Transcription';
 
   const headerActions = (
     <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center">
+      <ExportCreditsChip balance={balance} lowCredits={lowCredits} />
+      <ResultShareBar title={pageTitle} text={originalText || pageTitle} onNotify={notify} compact />
       {availableLanguages.map(lang => (
         <Chip
           key={lang}
-          label={getLangName(lang)}
+          label={getLanguageDisplayName(lang)}
           size="small"
           onClick={() => {
             setSelectedLanguage(lang);
@@ -220,13 +199,20 @@ const ViewAudioComponent = ({ audioId, embedded = false, onError }) => {
         />
       ))}
       {selectedLanguage && (
-        <Tooltip title="Download transcript">
-          <IconButton size="small" onClick={handleDownloadTranscript} sx={{ background: 'rgba(232, 160, 32, 0.1)', color: RV_AC, border: '1px solid rgba(232, 160, 32, 0.22)' }}>
-            <DownloadIcon fontSize="small" />
-          </IconButton>
+        <Tooltip title={!lowCredits ? 'Download transcript' : exportBlockedTitle}>
+          <span>
+            <IconButton
+              size="small"
+              onClick={handleDownloadTranscript}
+              disabled={lowCredits}
+              sx={{ background: 'rgba(232, 160, 32, 0.1)', color: RV_AC, border: '1px solid rgba(232, 160, 32, 0.22)' }}
+            >
+              <DownloadIcon fontSize="small" />
+            </IconButton>
+          </span>
         </Tooltip>
       )}
-      {(originalText || availableLanguages.length > 0) && !isEditing && (
+      {(originalText || availableLanguages.length > 0) && (
         <SendToStudioButton
           targets={['translate', 'synthesize', 'voiceover', 'dubbing']}
           getPayload={() => ({ text: pipelineText(), sourceLang: entry?.source_lang || 'en', targetLang: pipelineLang })}
@@ -235,125 +221,141 @@ const ViewAudioComponent = ({ audioId, embedded = false, onError }) => {
     </Stack>
   );
 
+  const formattedText = typeof entry?.formatted_transcript === 'string'
+    ? entry.formatted_transcript
+    : entry?.formatted_transcript
+      ? JSON.stringify(entry.formatted_transcript, null, 2)
+      : '';
+
   return (
-    <ResultViewLayout
-      type="transcription"
-      title={audioTitle || 'Audio Transcription'}
-      date={audioDate}
-      onBack={embedded ? null : () => navigate(-1)}
-      loading={loading}
-      error={error}
-      empty={!loading && !error && entries.length === 0}
-      emptyMessage="No transcription data"
-      emptyIcon={GraphicEqIcon}
-      headerActions={headerActions}
-      badges={availableLanguages.length ? [{ label: `${availableLanguages.length} languages` }] : []}
-      maxWidth={embedded ? false : 'lg'}
-    >
-      {saveMsg && (
-        <Alert severity={saveMsg.type} onClose={() => setSaveMsg(null)} sx={{ mb: 2, borderRadius: '12px' }}>
-          {saveMsg.text}
-        </Alert>
-      )}
+    <>
+      <ResultViewLayout
+        type="transcription"
+        title={pageTitle}
+        date={audioDate}
+        onBack={embedded ? null : () => navigate(-1)}
+        loading={loading || stillProcessing}
+        error={error}
+        empty={!loading && !stillProcessing && !error && entries.length === 0}
+        emptyMessage="No transcription data"
+        emptyIcon={GraphicEqIcon}
+        headerActions={headerActions}
+        badges={availableLanguages.length ? [{ label: `${availableLanguages.length} languages` }] : []}
+        maxWidth={embedded ? false : 'lg'}
+      >
+        {saveMsg && (
+          <Alert severity={saveMsg.type} onClose={() => setSaveMsg(null)} sx={{ mb: 2, borderRadius: '12px' }}>
+            {saveMsg.text}
+          </Alert>
+        )}
 
-      {entry && (
-        <>
-          <ResultSection
-            title={`Original transcript (${getLangName(entry.source_lang)})`}
-            icon={LanguageIcon}
-            onCopy={!isEditing && originalText ? () => handleCopy(originalText) : undefined}
-          >
-            <Stack direction="row" justifyContent="flex-end" sx={{ mb: isEditing ? 1.5 : 0 }}>
-              {transcriptActions}
-            </Stack>
-            {isEditing ? (
-              <TextField
-                fullWidth
-                multiline
-                minRows={embedded ? 8 : 12}
-                maxRows={24}
-                value={editText}
-                onChange={(e) => setEditText(e.target.value)}
-                placeholder="Edit your transcript…"
-                autoFocus
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: '12px',
-                    color: '#111111',
-                    lineHeight: 1.75,
-                    fontSize: '0.92rem',
-                    background: 'rgba(255,255,255,0.7)',
-                  },
-                }}
-              />
-            ) : (
-              <Typography sx={{ color: 'rgba(17, 17, 17, 0.72)', lineHeight: 1.85, whiteSpace: 'pre-wrap' }}>
-                {originalText || "No original transcript available"}
-              </Typography>
-            )}
-          </ResultSection>
+        {audioWarning && (
+          <Alert severity="warning" sx={{ mb: 2, borderRadius: '12px' }}>
+            {audioWarning}
+          </Alert>
+        )}
 
-          {entry.formatted_transcript && !isEditing && (
-            <ResultSection
-              title={`Formatted output (${(entry.response_format || 'raw').toUpperCase()})`}
+        {stillProcessing && (
+          <Alert severity="info" sx={{ mb: 2, borderRadius: '12px' }}>
+            Transcription in progress — this page will update automatically.
+          </Alert>
+        )}
+
+        {entry && (
+          <>
+            <ResultTextPanel
+              title={`Original transcript (${getLanguageDisplayName(entry.source_lang)})`}
               icon={LanguageIcon}
-              highlight
-              onCopy={() => handleCopy(typeof entry.formatted_transcript === 'string' ? entry.formatted_transcript : JSON.stringify(entry.formatted_transcript, null, 2))}
-            >
-              <ResultCodeBlock>
-                {typeof entry.formatted_transcript === 'string'
-                  ? entry.formatted_transcript
-                  : JSON.stringify(entry.formatted_transcript, null, 2)}
-              </ResultCodeBlock>
-            </ResultSection>
-          )}
+              text={originalText}
+              defaultExpanded
+              editable
+              saving={saving}
+              onSave={handleSaveOriginal}
+              onCopy={originalText ? () => copyText(originalText, notify) : undefined}
+              shareTitle={pageTitle}
+              shareText={originalText}
+              onNotify={notify}
+              minRows={embedded ? 8 : 12}
+              emptyMessage="No original transcript available"
+            />
 
-          {availableLanguages.length > 0 && (
-            <Box sx={{ mb: 3 }}>
-              <Typography sx={{ fontWeight: 800, color: '#111111', fontSize: '0.9rem', mb: 2, px: 0.5 }}>
-                Translations ({availableLanguages.length})
-              </Typography>
-              {availableLanguages.map((langCode, i) => (
-                <ResultLangAccordion
-                  key={langCode}
-                  langCode={langCode}
-                  langLabel={getLangName(langCode)}
-                  meta={`${String(renderTranslationContent(entry.Translations[langCode]) || '').length} chars`}
-                  expanded={activeTab === i}
-                  onChange={() => setActiveTab(i)}
-                  onCopy={() => handleCopy(renderTranslationContent(entry.Translations[langCode]))}
-                >
-                  <Typography sx={{ color: 'rgba(17, 17, 17, 0.72)', lineHeight: 1.85, whiteSpace: 'pre-wrap' }}>
-                    {renderTranslationContent(entry.Translations[langCode])}
-                  </Typography>
-                </ResultLangAccordion>
-              ))}
-            </Box>
-          )}
+            {entry.formatted_transcript && (
+              <ResultSection
+                title={`Formatted output (${(entry.response_format || 'raw').toUpperCase()})`}
+                icon={LanguageIcon}
+                highlight
+                defaultExpanded={false}
+                onCopy={() => copyText(formattedText, notify)}
+                shareTitle={`${pageTitle} — formatted`}
+                shareText={formattedText}
+                onNotify={notify}
+              >
+                <ResultCodeBlock>{formattedText}</ResultCodeBlock>
+              </ResultSection>
+            )}
 
-          {selectedLanguage && currentSegment && !isEditing && (
-            <ResultSection title={`Now playing — ${getLangName(selectedLanguage)}`} highlight>
-              <Typography sx={{ color: '#111111', fontWeight: 600, lineHeight: 1.75 }}>
-                {currentSegment}
-              </Typography>
-            </ResultSection>
-          )}
+            {availableLanguages.length > 0 && (
+              <Box sx={{ mb: 3 }}>
+                <Typography sx={{ fontWeight: 800, color: '#111111', fontSize: '0.9rem', mb: 2, px: 0.5 }}>
+                  Translations ({availableLanguages.length})
+                </Typography>
+                {availableLanguages.map((langCode, i) => {
+                  const langText = getLangText(langCode);
+                  return (
+                    <ResultLangAccordion
+                      key={langCode}
+                      langCode={langCode}
+                      langLabel={getLanguageDisplayName(langCode)}
+                      meta={`${String(langText || '').length} chars`}
+                      expanded={activeTab === i}
+                      onChange={() => setActiveTab(i)}
+                      text={langText}
+                      editable
+                      onSave={(val) => setEditedTexts(prev => ({ ...prev, [langCode]: val }))}
+                      onCopy={() => copyText(langText, notify)}
+                      shareTitle={`${pageTitle} — ${getLanguageDisplayName(langCode)}`}
+                      shareText={langText}
+                      onNotify={notify}
+                    />
+                  );
+                })}
+              </Box>
+            )}
 
-          {audioSource && (
-            <ResultSection title="Source audio" icon={GraphicEqIcon}>
-              <AudioPlayerComponent
-                audioSrc={audioSource}
-                onTimeUpdate={(t) => {
-                  if (entry && selectedLanguage && entry.Translations) {
-                    updateSegmentDisplay(entry.Translations[selectedLanguage], t);
-                  }
-                }}
-              />
-            </ResultSection>
-          )}
-        </>
-      )}
-    </ResultViewLayout>
+            {selectedLanguage && currentSegment && (
+              <ResultSection title={`Now playing — ${getLanguageDisplayName(selectedLanguage)}`} highlight defaultExpanded={false}>
+                <Typography sx={{ color: '#111111', fontWeight: 600, lineHeight: 1.75 }}>
+                  {currentSegment}
+                </Typography>
+              </ResultSection>
+            )}
+
+            {audioSource && (
+              <ResultSection title="Source audio — trim & edit" icon={GraphicEqIcon} defaultExpanded={false} collapsible>
+                <Box sx={{ mb: 2 }}>
+                  <AudioPlayerComponent
+                    audioSrc={audioSource}
+                    onTimeUpdate={(t) => {
+                      if (entry && selectedLanguage && entry.Translations) {
+                        updateSegmentDisplay(entry.Translations[selectedLanguage], t);
+                      }
+                    }}
+                  />
+                </Box>
+                <MediaTrimEditor
+                  url={audioSource}
+                  filename={`${(audioTitle || 'transcript').replace(/\s+/g, '_')}_audio_trim`}
+                  onNotify={notify}
+                  ensureExport={ensureCredits}
+                />
+              </ResultSection>
+            )}
+          </>
+        )}
+      </ResultViewLayout>
+
+      <ResultViewSnackbar {...snackbar} onClose={closeNotify} />
+    </>
   );
 };
 

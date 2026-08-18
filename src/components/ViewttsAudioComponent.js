@@ -1,23 +1,28 @@
 import React, { useEffect, useState } from "react";
-import { Typography, Button, Snackbar, Alert, Box, IconButton, Stack } from "@mui/material";
+import { Button, Box, Stack, Tooltip } from "@mui/material";
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import RecordVoiceOverIcon from '@mui/icons-material/RecordVoiceOver';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import AudioPlayer from "react-h5-audio-player";
 import "react-h5-audio-player/lib/styles.css";
 import { dataAPI } from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import useExportGate from '../hooks/useExportGate';
+import { getLanguageDisplayName } from '../utils/translationViewHelpers';
 import {
-  ResultViewLayout, ResultLangAccordion, rvPrimaryButtonSx, RV_AC,
+  ResultViewLayout, ResultLangAccordion, rvPrimaryButtonSx,
+  ExportCreditsChip, ResultViewSnackbar, useResultNotify, ResultShareBar,
 } from './result-view';
+import MediaTrimEditor from './MediaTrimEditor';
 
 const ViewttsAudioComponent = ({ audioId }) => {
   const [entries, setEntries] = useState([]);
   const [audioDate, setAudioDate] = useState("");
   const [audioTitle, setAudioTitle] = useState("");
   const [loading, setLoading] = useState(true);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '' });
+  const [editedTexts, setEditedTexts] = useState({});
   const navigate = useNavigate();
+  const { balance, lowCredits, exportBlockedTitle, copyText, downloadUrl, ensureCredits } = useExportGate();
+  const { snackbar, notify, closeNotify } = useResultNotify();
 
   useEffect(() => {
     const fetchEntries = async () => {
@@ -30,45 +35,24 @@ const ViewttsAudioComponent = ({ audioId }) => {
           setAudioTitle(fetchedEntries[0].title);
         }
       } catch {
-        setSnackbar({ open: true, message: 'Failed to fetch audio data' });
+        notify('Failed to fetch audio data', 'error');
       } finally {
         setLoading(false);
       }
     };
     fetchEntries();
-  }, [audioId]);
-
-  const notify = (message) => setSnackbar({ open: true, message });
-
-  const handleCopyText = (text) => {
-    navigator.clipboard.writeText(text)
-      .then(() => notify('Copied to clipboard'))
-      .catch(() => notify('Failed to copy'));
-  };
-
-  const handleDownload = (audioUrl) => {
-    try {
-      const link = document.createElement("a");
-      link.href = decodeURIComponent(audioUrl);
-      link.download = "";
-      link.target = "_blank";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      notify('Download started');
-    } catch {
-      notify('Download failed');
-    }
-  };
+  }, [audioId, notify]);
 
   const entry = entries[0];
   const ttsMap = entry?.translations_with_tts || {};
+  const pageTitle = audioTitle || 'Synthesized audio';
+  const firstLangText = Object.values(ttsMap)[0]?.translation || pageTitle;
 
   return (
     <>
       <ResultViewLayout
         type="tts"
-        title={audioTitle || 'Synthesized audio'}
+        title={pageTitle}
         date={audioDate}
         onBack={() => navigate(-1)}
         loading={loading}
@@ -76,30 +60,32 @@ const ViewttsAudioComponent = ({ audioId }) => {
         emptyMessage="No synthesis data available"
         emptyIcon={RecordVoiceOverIcon}
         badges={[
-          { label: 'Multi-language' },
+          { label: `${Object.keys(ttsMap).length || 0} languages` },
           { label: 'Audio ready' },
         ]}
+        headerActions={
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            <ExportCreditsChip balance={balance} lowCredits={lowCredits} />
+            <ResultShareBar title={pageTitle} text={firstLangText} onNotify={notify} compact />
+          </Stack>
+        }
       >
-        {Object.entries(ttsMap).map(([lang, data], i) => (
-          <ResultLangAccordion
-            key={lang}
-            langCode={lang}
-            langLabel={`${lang.toUpperCase()} — text & audio`}
-            defaultExpanded={i === 0}
-            onCopy={() => handleCopyText(data.translation)}
-          >
-            <Box sx={{ position: 'relative', mb: 2.5 }}>
-              <Typography sx={{ color: 'rgba(17, 17, 17, 0.72)', lineHeight: 1.85, fontSize: '0.95rem', pr: 5 }}>
-                {data.translation}
-              </Typography>
-              <IconButton
-                onClick={() => handleCopyText(data.translation)}
-                size="small"
-                sx={{ position: 'absolute', top: 0, right: 0, color: 'rgba(17, 17, 17, 0.3)', '&:hover': { color: RV_AC } }}
-              >
-                <ContentCopyIcon fontSize="small" />
-              </IconButton>
-            </Box>
+        {Object.entries(ttsMap).map(([lang, data], i) => {
+          const langText = editedTexts[lang] ?? data.translation;
+          return (
+            <ResultLangAccordion
+              key={lang}
+              langCode={lang}
+              langLabel={`${getLanguageDisplayName(lang)} — text & audio`}
+              defaultExpanded={i === 0}
+              text={langText}
+              editable
+              onSave={(val) => setEditedTexts((prev) => ({ ...prev, [lang]: val }))}
+              onCopy={() => copyText(langText, notify)}
+              shareTitle={`${pageTitle} — ${getLanguageDisplayName(lang)}`}
+              shareText={langText}
+              onNotify={notify}
+            >
             <Box sx={{ mb: 2, '& .rhap_container': { borderRadius: '12px', border: '1px solid rgba(17,17,17,0.06)' } }}>
               <AudioPlayer
                 src={data.audio_file_path}
@@ -108,20 +94,33 @@ const ViewttsAudioComponent = ({ audioId }) => {
                 showJumpControls={false}
               />
             </Box>
-            <Button
-              startIcon={<CloudDownloadIcon />}
-              onClick={() => handleDownload(data.audio_file_path)}
-              sx={rvPrimaryButtonSx}
-            >
-              Download audio
-            </Button>
-          </ResultLangAccordion>
-        ))}
+            <MediaTrimEditor
+              url={data.audio_file_path}
+              filename={`${(audioTitle || 'synthesis').replace(/\s+/g, '_')}_${lang}_trim`}
+              onNotify={notify}
+              ensureExport={ensureCredits}
+              height={72}
+            />
+            <Box sx={{ mt: 2 }}>
+              <Tooltip title={!lowCredits ? 'Download audio file' : exportBlockedTitle}>
+                <span>
+                  <Button
+                    startIcon={<CloudDownloadIcon />}
+                    onClick={() => downloadUrl(data.audio_file_path, notify)}
+                    disabled={lowCredits}
+                    sx={rvPrimaryButtonSx}
+                  >
+                    Download audio
+                  </Button>
+                </span>
+              </Tooltip>
+            </Box>
+            </ResultLangAccordion>
+          );
+        })}
       </ResultViewLayout>
 
-      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ open: false, message: '' })} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        <Alert severity="info" onClose={() => setSnackbar({ open: false, message: '' })} sx={{ borderRadius: '12px' }}>{snackbar.message}</Alert>
-      </Snackbar>
+      <ResultViewSnackbar {...snackbar} onClose={closeNotify} />
     </>
   );
 };

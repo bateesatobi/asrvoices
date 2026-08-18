@@ -1,22 +1,36 @@
-import React, { useEffect, useState } from "react";
-import { Typography, Button, Snackbar, Alert, Stack, Box } from "@mui/material";
+import React, { useEffect, useState, useMemo } from "react";
+import { Typography, Button, Stack, Box, Tooltip } from "@mui/material";
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
-import TranslateIcon from '@mui/icons-material/Translate';
 import HearingIcon from '@mui/icons-material/Hearing';
 import AudioPlayer from "react-h5-audio-player";
 import "react-h5-audio-player/lib/styles.css";
 import { dataAPI } from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import useExportGate from '../hooks/useExportGate';
+import { getLanguageDisplayName } from '../utils/translationViewHelpers';
 import {
   ResultViewLayout, ResultLangAccordion, rvPrimaryButtonSx, RV_AC,
+  ExportCreditsChip, ResultViewSnackbar, useResultNotify, ResultShareBar,
 } from './result-view';
+import MediaTrimEditor from './MediaTrimEditor';
+
+const formatTime = (s) => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
+
+const segmentsToText = (segments) => {
+  if (!segments?.length) return '';
+  return segments
+    .map((item) => (typeof item === 'string' ? item : `[${formatTime(item.start_time || 0)}] ${item.text}`))
+    .join('\n');
+};
 
 const ViewVoxComponent = ({ voiceId }) => {
   const [translationData, setTranslationData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "info" });
   const [audioError, setAudioError] = useState({});
+  const [editedTexts, setEditedTexts] = useState({});
   const navigate = useNavigate();
+  const { balance, lowCredits, exportBlockedTitle, downloadBlob, downloadUrl, ensureCredits } = useExportGate();
+  const { snackbar, notify, closeNotify } = useResultNotify();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -26,40 +40,11 @@ const ViewVoxComponent = ({ voiceId }) => {
         if (!response.entries?.length) throw new Error("No entries");
         setTranslationData(response.entries[0]);
       } catch {
-        setSnackbar({ open: true, message: "Failed to load voice data", severity: "error" });
+        notify("Failed to load voice data", "error");
       } finally { setLoading(false); }
     };
     fetchData();
-  }, [voiceId]);
-
-  const formatTime = (s) => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
-
-  const handleDownloadTranscript = (language, texts) => {
-    try {
-      if (!texts?.length) throw new Error("No transcript");
-      const content = texts.map(item => (typeof item === 'string' ? item : `[${formatTime(item.start_time)}] ${item.text}`)).join("\n");
-      const blob = new Blob([content], { type: "text/plain" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = `transcript_${language}.txt`;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-      setSnackbar({ open: true, message: "Transcript downloaded", severity: "success" });
-    } catch {
-      setSnackbar({ open: true, message: "Download failed", severity: "error" });
-    }
-  };
-
-  const handleDownloadAudio = (audioUrl, language) => {
-    try {
-      const link = document.createElement("a");
-      link.href = decodeURIComponent(audioUrl);
-      link.download = `audio_${language}.wav`;
-      document.body.appendChild(link); link.click(); document.body.removeChild(link);
-      setSnackbar({ open: true, message: "Audio download started", severity: "success" });
-    } catch {
-      setSnackbar({ open: true, message: "Download failed", severity: "error" });
-    }
-  };
+  }, [voiceId, notify]);
 
   const getTranslationText = (translation) => {
     if (typeof translation === 'string') return translation;
@@ -67,29 +52,65 @@ const ViewVoxComponent = ({ voiceId }) => {
     return "No translation available";
   };
 
-  const dlButtons = (audioUrl, lang, transcript) => (
+  const originalPlainText = useMemo(
+    () => segmentsToText(translationData?.Original_transcript),
+    [translationData]
+  );
+
+  const handleDownloadTranscript = async (language, texts) => {
+    const content = typeof texts === 'string' ? texts : segmentsToText(texts);
+    if (!content) {
+      notify('No transcript to download', 'error');
+      return;
+    }
+    await downloadBlob(content, `transcript_${language}.txt`, 'text/plain', notify);
+  };
+
+  const handleDownloadAudio = async (audioUrl) => {
+    await downloadUrl(audioUrl, notify);
+  };
+
+  const dlButtons = (audioUrl, lang, transcriptText) => (
     <Stack direction="row" spacing={1.5} sx={{ mt: 2 }}>
-      <Button size="small" startIcon={<CloudDownloadIcon />} onClick={() => handleDownloadAudio(audioUrl, lang)} sx={rvPrimaryButtonSx}>
-        Audio
-      </Button>
-      {transcript && (
-        <Button
-          size="small"
-          startIcon={<CloudDownloadIcon />}
-          onClick={() => handleDownloadTranscript(lang, Array.isArray(transcript) ? transcript : [transcript])}
-          sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 700, border: '1px solid rgba(232, 160, 32, 0.35)', color: RV_AC }}
-        >
-          Transcript
-        </Button>
+      <Tooltip title={!lowCredits ? 'Download audio' : exportBlockedTitle}>
+        <span>
+          <Button
+            size="small"
+            startIcon={<CloudDownloadIcon />}
+            onClick={() => handleDownloadAudio(audioUrl)}
+            disabled={lowCredits}
+            sx={rvPrimaryButtonSx}
+          >
+            Audio
+          </Button>
+        </span>
+      </Tooltip>
+      {transcriptText && (
+        <Tooltip title={!lowCredits ? 'Download transcript' : exportBlockedTitle}>
+          <span>
+            <Button
+              size="small"
+              startIcon={<CloudDownloadIcon />}
+              onClick={() => handleDownloadTranscript(lang, transcriptText)}
+              disabled={lowCredits}
+              sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 700, border: '1px solid rgba(232, 160, 32, 0.35)', color: RV_AC }}
+            >
+              Transcript
+            </Button>
+          </span>
+        </Tooltip>
       )}
     </Stack>
   );
+
+  const pageTitle = 'Voice to Voice';
+  const displayOriginal = editedTexts.original ?? originalPlainText;
 
   return (
     <>
       <ResultViewLayout
         type="vox"
-        title="Voice to Voice"
+        title={pageTitle}
         date={translationData?.Date}
         onBack={() => navigate(-1)}
         loading={loading}
@@ -97,18 +118,30 @@ const ViewVoxComponent = ({ voiceId }) => {
         emptyMessage="Failed to load voice data"
         emptyIcon={HearingIcon}
         badges={translationData ? [
-          { label: `Source: ${(translationData.source_lang || '—').toUpperCase()}` },
-          { label: 'Audio available' },
+          { label: `Source: ${getLanguageDisplayName(translationData.source_lang)}` },
+          { label: `${Object.keys(translationData.audio_urls || {}).length} outputs` },
         ] : []}
+        headerActions={
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            <ExportCreditsChip balance={balance} lowCredits={lowCredits} />
+            <ResultShareBar title={pageTitle} text={displayOriginal || pageTitle} onNotify={notify} compact />
+          </Stack>
+        }
       >
         {translationData && (
           <>
             <ResultLangAccordion
               langCode={translationData.source_lang || 'src'}
-              langLabel={`Original (${(translationData.source_lang || 'Unknown').toUpperCase()})`}
+              langLabel={`Original (${getLanguageDisplayName(translationData.source_lang)})`}
               defaultExpanded
+              text={displayOriginal}
+              editable={!!displayOriginal}
+              onSave={(val) => setEditedTexts((prev) => ({ ...prev, original: val }))}
+              shareTitle={pageTitle}
+              shareText={displayOriginal}
+              onNotify={notify}
             >
-              {translationData.Original_transcript?.length > 0 ? (
+              {translationData.Original_transcript?.length > 0 && !displayOriginal && (
                 translationData.Original_transcript.map((seg, i) => (
                   <Box key={i} sx={{ mb: 1.5, display: 'flex', gap: 2 }}>
                     <Typography sx={{ color: RV_AC, fontSize: '0.78rem', fontWeight: 800, minWidth: 48, mt: 0.2 }}>
@@ -117,8 +150,6 @@ const ViewVoxComponent = ({ voiceId }) => {
                     <Typography sx={{ color: 'rgba(17, 17, 17, 0.72)', lineHeight: 1.75 }}>{seg.text}</Typography>
                   </Box>
                 ))
-              ) : (
-                <Typography sx={{ color: 'rgba(17, 17, 17, 0.45)' }}>No transcript available</Typography>
               )}
               {translationData.orginal_audio_url && !audioError.original && (
                 <Box sx={{ mt: 2 }}>
@@ -129,7 +160,16 @@ const ViewVoxComponent = ({ voiceId }) => {
                     showJumpControls={false}
                     onError={() => setAudioError(p => ({ ...p, original: true }))}
                   />
-                  {dlButtons(translationData.orginal_audio_url, translationData.source_lang || 'original', translationData.Original_transcript)}
+                  <Box sx={{ mt: 2 }}>
+                    <MediaTrimEditor
+                      url={translationData.orginal_audio_url}
+                      filename={`vox_${translationData.source_lang || 'original'}_trim`}
+                      onNotify={notify}
+                      ensureExport={ensureCredits}
+                      height={72}
+                    />
+                  </Box>
+                  {dlButtons(translationData.orginal_audio_url, translationData.source_lang || 'original', displayOriginal)}
                 </Box>
               )}
             </ResultLangAccordion>
@@ -137,12 +177,20 @@ const ViewVoxComponent = ({ voiceId }) => {
             {translationData.audio_urls && Object.entries(translationData.audio_urls).map(([langCode, audioUrl], i) => {
               if (!audioUrl || typeof audioUrl !== 'string') return null;
               const translation = translationData.Translations?.[langCode];
+              const baseText = getTranslationText(translation);
+              const langText = editedTexts[langCode] ?? baseText;
               return (
                 <ResultLangAccordion
                   key={langCode}
                   langCode={langCode}
-                  langLabel={`${langCode.toUpperCase()} translation`}
+                  langLabel={`${getLanguageDisplayName(langCode)} translation`}
                   defaultExpanded={i === 0}
+                  text={langText}
+                  editable={!!langText}
+                  onSave={(val) => setEditedTexts((prev) => ({ ...prev, [langCode]: val }))}
+                  shareTitle={`${pageTitle} — ${getLanguageDisplayName(langCode)}`}
+                  shareText={langText}
+                  onNotify={notify}
                 >
                   {!audioError[langCode] ? (
                     <AudioPlayer
@@ -153,16 +201,18 @@ const ViewVoxComponent = ({ voiceId }) => {
                       onError={() => setAudioError(p => ({ ...p, [langCode]: true }))}
                     />
                   ) : (
-                    <Typography sx={{ color: '#ef4444', mb: 1 }}>Cannot play {langCode.toUpperCase()} audio</Typography>
+                    <Typography sx={{ color: '#ef4444', mb: 1 }}>Cannot play {getLanguageDisplayName(langCode)} audio</Typography>
                   )}
-                  {translation && (
-                    <Box sx={{ mt: 2, p: 2, borderRadius: '12px', background: 'rgba(17, 17, 17, 0.02)', border: '1px solid rgba(17, 17, 17, 0.06)' }}>
-                      <Typography sx={{ color: 'rgba(17, 17, 17, 0.72)', lineHeight: 1.85 }}>
-                        {getTranslationText(translation)}
-                      </Typography>
-                    </Box>
-                  )}
-                  {dlButtons(audioUrl, langCode, translation)}
+                  <Box sx={{ mt: 2 }}>
+                    <MediaTrimEditor
+                      url={audioUrl}
+                      filename={`vox_${langCode}_trim`}
+                      onNotify={notify}
+                      ensureExport={ensureCredits}
+                      height={72}
+                    />
+                  </Box>
+                  {dlButtons(audioUrl, langCode, langText)}
                 </ResultLangAccordion>
               );
             })}
@@ -170,11 +220,7 @@ const ViewVoxComponent = ({ voiceId }) => {
         )}
       </ResultViewLayout>
 
-      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar(s => ({ ...s, open: false }))} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar(s => ({ ...s, open: false }))} sx={{ borderRadius: '12px' }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+      <ResultViewSnackbar {...snackbar} onClose={closeNotify} />
     </>
   );
 };

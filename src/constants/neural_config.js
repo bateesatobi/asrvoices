@@ -31,6 +31,7 @@ export const NATIVE_NAMES = {
   lgg: { male: ['Drani', 'Onzima', 'Bello', 'Drileba', 'Anguandia'], female: ['Akello', 'Adokorac', 'Ayikoru', 'Candiru', 'Asio'] },
   luo: { male: ['Otieno', 'Onyango', 'Ochieng', 'Odhiambo', 'Okoth', 'Omondi', 'Owino', 'Odongo'], female: ['Atieno', 'Anyango', 'Adhiambo', 'Achieng', 'Akoth', 'Amondi', 'Awino', 'Adongo'] },
   pcm: { male: ['Chief', 'Bobo', 'Presido', 'Uche', 'Oga', 'Bros', 'Paddy', 'Guy'], female: ['Sisi', 'Queen', 'Faith', 'Blessing', 'Joy', 'Mercy', 'Peace', 'Grace'] },
+  en: { male: ['James', 'David'], female: ['Sarah', 'Emma'] },
   nyn: { male: ['Mugisha', 'Tumusiime', 'Karyeiju', 'Niwagaba', 'Bainomugisha', 'Asiimwe'], female: ['Mbabazi', 'Kansime', 'Rose', 'Kyomugisha', 'Atuhaire', 'Amanya', 'Nimusiima'] },
   swa: { male: ['Bakari', 'Juma', 'Hassan', 'Saidi', 'Ali', 'Yusuf', 'Hamisi', 'Ramadhani'], female: ['Fatuma', 'Amina', 'Neema', 'Rehema', 'Zawadi', 'Asha', 'Mariam', 'Halima'] },
   twi: { male: ['Kwesi', 'Yaw', 'Kofi', 'Mensah', 'Boateng', 'Opoku', 'Osei'], female: ['Esi', 'Adwoa', 'Abena', 'Afia', 'Ama', 'Akosua', 'Yaa'] },
@@ -39,6 +40,8 @@ export const NATIVE_NAMES = {
 };
 
 export const RAW_SPEAKERS = [
+  { id: "eng_female_1", lang: "en", gender: "female" },
+  { id: "eng_male_1", lang: "en", gender: "male" },
   { id: "kin_female_1", lang: "kin", gender: "female" },
   { id: "nyn_female_248", lang: "nyn", gender: "female" },
   { id: "lgg_female_245", lang: "lgg", gender: "female" },
@@ -163,5 +166,5 @@ export const NEURAL_SPEAKERS = RAW_SPEAKERS.map((s, idx) => {
 }).sort((a, b) => a.name.localeCompare(b.name));
 
 export const NEURAL_LANGUAGE_MAP = {
-  'en': ['pcm'], // Map English to Pidgin voices
+  en: ['en', 'pcm'],
 };

@@ -1,17 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Snackbar, Alert } from '@mui/material';
+import { Button, Stack, Tooltip } from '@mui/material';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import MovieIcon from '@mui/icons-material/Movie';
 import { useNavigate } from 'react-router-dom';
-import { dataAPI } from '../services/api';
-import { ResultViewLayout, ResultSection, rvPrimaryButtonSx } from './result-view';
-import WaveformTimeline from './WaveformTimeline';
+import { dataAPI, studioPlaybackUrl } from '../services/api';
+import useExportGate from '../hooks/useExportGate';
+import {
+  ResultViewLayout, ResultSection, rvPrimaryButtonSx,
+  ExportCreditsChip, ResultViewSnackbar, useResultNotify, ResultShareBar,
+} from './result-view';
+import MediaTrimEditor from './MediaTrimEditor';
 
 const ViewDubbingComponent = ({ dubbingId }) => {
   const [entry, setEntry] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '' });
   const navigate = useNavigate();
+  const { balance, lowCredits, exportBlockedTitle, downloadUrl, ensureCredits } = useExportGate();
+  const { snackbar, notify, closeNotify } = useResultNotify();
 
   useEffect(() => {
     let active = true;
@@ -29,15 +34,21 @@ const ViewDubbingComponent = ({ dubbingId }) => {
         }
         if (active) setEntry(found);
       } catch {
-        if (active) setSnackbar({ open: true, message: 'Failed to load dubbing project' });
+        if (active) notify('Failed to load dubbing project', 'error');
       } finally {
         if (active) setLoading(false);
       }
     })();
     return () => { active = false; };
-  }, [dubbingId]);
+  }, [dubbingId, notify]);
 
-  const videoUrl = entry?.dubbed_video_url || entry?.slideshow_url || entry?.video_url || null;
+  const videoUrl =
+    (entry?.playback_url?.startsWith('http') ? entry.playback_url : null)
+    || studioPlaybackUrl('dubbing', dubbingId)
+    || entry?.dubbed_video_url
+    || entry?.slideshow_url
+    || entry?.video_url
+    || null;
   const isSlideshow = entry?.type === 'image_slideshow';
   const segments = Array.isArray(entry?.segments) ? entry.segments : [];
   const timelineSegments = segments.map(s => ({
@@ -46,16 +57,9 @@ const ViewDubbingComponent = ({ dubbingId }) => {
     text: s.text || s.translated || '',
   }));
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!videoUrl) return;
-    const link = document.createElement('a');
-    link.href = videoUrl;
-    link.download = '';
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setSnackbar({ open: true, message: 'Download started' });
+    await downloadUrl(videoUrl, notify);
   };
 
   return (
@@ -73,19 +77,42 @@ const ViewDubbingComponent = ({ dubbingId }) => {
         badges={[
           entry?.status && { label: entry.status === 'completed' ? 'Completed' : entry.status },
           segments.length && { label: `${segments.length} segments` },
-          entry?.credits_used != null && { label: `${Number(entry.credits_used).toFixed(1)} credits` },
+          entry?.credits_used != null && { label: `${Number(entry.credits_used).toFixed(1)} credits used` },
         ].filter(Boolean)}
-        headerActions={videoUrl && (
-          <Button startIcon={<CloudDownloadIcon />} onClick={handleDownload} sx={rvPrimaryButtonSx}>
-            Download
-          </Button>
-        )}
+        headerActions={
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            <ExportCreditsChip balance={balance} lowCredits={lowCredits} />
+            <ResultShareBar
+              title={entry?.title || entry?.video_filename || 'Video Dubbing'}
+              text={`Check out my dubbed video: ${entry?.title || 'Video Dubbing'}`}
+              onNotify={notify}
+              compact
+            />
+            {videoUrl && (
+              <Tooltip title={!lowCredits ? 'Download dubbed video' : exportBlockedTitle}>
+                <span>
+                  <Button
+                    startIcon={<CloudDownloadIcon />}
+                    onClick={handleDownload}
+                    disabled={lowCredits}
+                    sx={rvPrimaryButtonSx}
+                  >
+                    Download
+                  </Button>
+                </span>
+              </Tooltip>
+            )}
+          </Stack>
+        }
       >
         {videoUrl && (
-          <ResultSection title="Output & Timeline">
-            <WaveformTimeline
+          <ResultSection title="Output, timeline & trim" defaultExpanded collapsible>
+            <MediaTrimEditor
               url={videoUrl}
               video
+              filename={`${(entry?.title || entry?.video_filename || 'dubbing').replace(/\s+/g, '_')}_trim`}
+              onNotify={notify}
+              ensureExport={ensureCredits}
               segments={timelineSegments}
               emptyLabel="No timed segments for this project."
             />
@@ -93,9 +120,7 @@ const ViewDubbingComponent = ({ dubbingId }) => {
         )}
       </ResultViewLayout>
 
-      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ open: false, message: '' })} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        <Alert severity="info" onClose={() => setSnackbar({ open: false, message: '' })} sx={{ borderRadius: '12px' }}>{snackbar.message}</Alert>
-      </Snackbar>
+      <ResultViewSnackbar {...snackbar} onClose={closeNotify} />
     </>
   );
 };

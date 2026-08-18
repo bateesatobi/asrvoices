@@ -1,244 +1,300 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
-  Box, Button, FormControl, Grid, Select, MenuItem,
-  TextField, Alert, Tab, Tabs, Drawer, LinearProgress,
-  InputLabel, Chip, IconButton, Stack
+  Box,
+  Typography,
+  TextField,
+  Alert,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
-import { VolumeUp, CloudUpload, SwapHoriz, CheckCircle } from '@mui/icons-material';
-import ViewttsAudioComponent from './ViewttsAudioComponent';
-import { ActivityStrip, AvoicesBackdropLoader } from './progress';
-import { ttsAPI, subscriptionAPI, getFriendlyErrorMessage } from '../services/api';
-import { LANGUAGES } from '../constants/languages';
+import { VolumeUp } from '@mui/icons-material';
+import { StudioJobProgressBar } from './progress';
+import { ttsAPI, getFriendlyErrorMessage } from '../services/api';
+import { NEURAL_SPEAKERS, NEURAL_LANGUAGES } from '../constants/neural_config';
+import useStudioUser from '../hooks/useStudioUser';
+import StudioPageShell from './Layout/StudioPageShell';
+import StudioHistorySection from './Layout/StudioHistorySection';
+import SoundtrackPickerSection, { useSoundtrackPicker } from './Redesigned/SoundtrackPickerSection';
+import {
+  ElevenLabsButton,
+  StudioPlayerBar,
+  PropertySection,
+  PropertyRow,
+  ElevenLabsFileUpload,
+  SettingSelect,
+  ElevenLabsSettingsPanel,
+  SettingSection,
+} from './ElevenLabsUI';
 
-const G = 'linear-gradient(135deg, #f59e0b, #d97706)';
-const G_PURPLE = 'linear-gradient(135deg, #f59e0b, #d97706)';
-const GLASS = { background: 'rgba(17, 17, 17,0.04)', border: '1px solid rgba(17, 17, 17, 0.08)', borderRadius: '14px' };
-const SELECT_SX = {
-  borderRadius: '12px', color: '#111111', fontSize: '0.9rem',
-  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(17, 17, 17, 0.1)' },
-  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#f59e0b' },
-  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#f59e0b' },
-  '& .MuiSvgIcon-root': { color: 'rgba(17, 17, 17, 0.5)' },
-};
-const LABEL_SX = { color: 'rgba(17, 17, 17, 0.5)', '&.Mui-focused': { color: '#f59e0b' } };
-
-// TTS credit rate: 0.001 credits per char (1 credit per 1k chars)
 const TTS_RATE = 0.001;
 
 export default function SynthesizeComponent() {
-  const [tab, setTab] = useState(0);
-  const [sourceLang, setSourceLang] = useState('en');
-  const [targetLangs, setTargetLangs] = useState([]);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const location = useLocation();
+  const { userId, balance, refreshBalance } = useStudioUser();
+
   const [text, setText] = useState('');
   const [file, setFile] = useState(null);
+  const [selectedSpeaker, setSelectedSpeaker] = useState(NEURAL_SPEAKERS[0]);
+  const [outputLang, setOutputLang] = useState(NEURAL_SPEAKERS[0].lang);
+  const [textLang, setTextLang] = useState('en');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [docId, setDocId] = useState(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [estimatedCost, setEstimatedCost] = useState(0);
-  const [userBalance, setUserBalance] = useState(null);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [dryAudioUrl, setDryAudioUrl] = useState(null);
+  const [resultDocId, setResultDocId] = useState(null);
+  const [resultSource, setResultSource] = useState('vocify');
+  const [jobProgress, setJobProgress] = useState(0);
+  const soundtrack = useSoundtrackPicker();
 
-  const getUser = () => JSON.parse(localStorage.getItem('user') || '{}');
-
-  // Fetch balance on mount
   useEffect(() => {
-    const user = getUser();
-    const userId = user.uid || user.userId;
-    if (userId) {
-      subscriptionAPI.getBalance(userId)
-        .then(data => setUserBalance(data.balance ?? data.credit_balance ?? null))
-        .catch(() => {});
-    }
-  }, []);
+    const voiceId = location.state?.voiceId;
+    if (!voiceId) return;
+    const speaker = NEURAL_SPEAKERS.find((s) => s.id === voiceId);
+    if (speaker) setSelectedSpeaker(speaker);
+  }, [location.state?.voiceId]);
 
-  // Recalculate cost whenever text changes
-  useEffect(() => {
-    if (tab === 0 && text.trim()) {
-      setEstimatedCost(Math.max(Math.round(text.length * TTS_RATE * 100) / 100, 0.01));
-    } else if (tab === 1 && file) {
-      // Rough proxy for docs: 1 page ≈ 3000 bytes
-      const pages = Math.max(file.size / 3000, 1);
-      setEstimatedCost(Math.round(pages * TTS_RATE * 3000 * 100) / 100);
-    } else {
-      setEstimatedCost(0);
-    }
-  }, [text, file, tab]);
+  const estimatedCost = text.trim()
+    ? Math.max(Math.round(text.length * TTS_RATE * 100) / 100, 0.01)
+    : file
+      ? Math.max(Math.round((file.size / 3000) * TTS_RATE * 3000 * 100) / 100, 0.01)
+      : 0;
 
-  const isLowBalance = userBalance !== null && userBalance < estimatedCost;
-
-  const swapLangs = () => {
-    if (targetLangs.length === 1) { setSourceLang(targetLangs[0]); setTargetLangs([sourceLang]); }
+  const resolveAudioUrl = async (docId, lang, collection = 'vocify') => {
+    const voiceData =
+      collection === 'document'
+        ? await ttsAPI.getDocumentVoice(docId)
+        : await ttsAPI.getVocifyVoice(docId);
+    const path =
+      voiceData.entries?.[0]?.translations_with_tts?.[lang]?.audio_file_path ||
+      voiceData.entries?.[0]?.audio_file_path ||
+      voiceData.audio_url;
+    if (path) setAudioUrl(path);
   };
 
   const handleGenerate = async () => {
-    setError(null); setLoading(true); setDocId(null); setDrawerOpen(false);
+    if (!userId) {
+      setError('Please log in to use text-to-speech');
+      return;
+    }
+    setError(null);
+    setLoading(true);
+    setAudioUrl(null);
+    setDryAudioUrl(null);
+    setResultDocId(null);
+    setJobProgress(0);
+    const pollOptions = { onProgress: (job) => setJobProgress(Number.isFinite(job.progress) ? job.progress : 0) };
     try {
-      const user = getUser();
-      const userId = user.uid || user.userId;
-      if (!userId) throw new Error('Please log in to use text-to-speech');
-      if (tab === 0) {
-        if (!text.trim()) throw new Error('Please enter text to synthesize');
+      if (text.trim()) {
         if (text.length > 5000) throw new Error('Text exceeds 5000 character limit');
-        const res = await ttsAPI.synthesizeText(text, sourceLang, userId);
-        if (!res.doc_id) throw new Error('No document ID received');
-        setDocId(res.doc_id);
-      } else {
-        if (!file) throw new Error('Please select a document');
+        const res = await ttsAPI.synthesizeText(
+          text,
+          selectedSpeaker.id,
+          outputLang,
+          userId,
+          null,
+          { ...pollOptions, textLang }
+        );
+        const dry = res.dry_audio_url || res.audio_file_url;
+        if (dry) {
+          setDryAudioUrl(dry);
+          setAudioUrl(dry);
+        }
+        if (res.doc_id) {
+          setResultDocId(res.doc_id);
+          setResultSource('vocify');
+        }
+        if (!dry && res.doc_id) await resolveAudioUrl(res.doc_id, outputLang);
+        else if (!dry) throw new Error('No audio received');
+      } else if (file) {
         if (file.size > 10 * 1024 * 1024) throw new Error('File must be under 10MB');
-        if (!targetLangs.length) throw new Error('Select at least one target language');
-        const res = await ttsAPI.translateDocumentWithTTS(file, sourceLang, targetLangs, null, userId);
-        if (!res.doc_id) throw new Error('No document ID received');
-        setDocId(res.doc_id);
+        const res = await ttsAPI.translateDocumentWithTTS(
+          file,
+          outputLang,
+          [outputLang],
+          selectedSpeaker.id,
+          userId,
+          null,
+          pollOptions
+        );
+        const directUrl = res.translations?.[outputLang]?.dry_audio_path
+          || res.translations?.[outputLang]?.audio_file_path;
+        if (directUrl) {
+          setDryAudioUrl(directUrl);
+          setAudioUrl(directUrl);
+        }
+        if (res.doc_id) {
+          setResultDocId(res.doc_id);
+          setResultSource('document_tts');
+          if (!directUrl) await resolveAudioUrl(res.doc_id, outputLang, 'document');
+        } else throw new Error('No document ID received');
+      } else {
+        throw new Error('Enter text or upload a document');
       }
-      // Refresh balance after usage
-      const user2 = getUser();
-      const userId2 = user2.uid || user2.userId;
-      if (userId2) {
-        subscriptionAPI.getBalance(userId2)
-          .then(data => {
-            setUserBalance(data.balance ?? data.credit_balance ?? null);
-            window.dispatchEvent(new CustomEvent('refresh-balance'));
-          })
-          .catch(() => {});
-      }
-      setDrawerOpen(true);
+      refreshBalance();
+      window.dispatchEvent(new CustomEvent('refresh-balance'));
+      window.dispatchEvent(new CustomEvent('library-updated'));
     } catch (e) {
       if (e.response?.status === 402) {
-        window.dispatchEvent(new CustomEvent('subscription-limit-exceeded', {
-          detail: { message: e.response?.data?.detail || 'Insufficient credits.', status: 402 }
-        }));
-        setError(e.response?.data?.detail || 'Insufficient credits to generate speech.');
+        window.dispatchEvent(
+          new CustomEvent('subscription-limit-exceeded', {
+            detail: { message: e.response?.data?.detail || 'Insufficient credits.', status: 402 },
+          })
+        );
+        setError(e.response?.data?.detail || 'Insufficient credits.');
       } else {
         setError(getFriendlyErrorMessage(e, 'Generation failed. Please try again.'));
       }
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  return (
-    <Box>
-      {/* Tabs */}
-      <Box sx={{ mb: 3, borderBottom: '1px solid rgba(17, 17, 17,0.07)' }}>
-        <Tabs value={tab} onChange={(_, v) => { setTab(v); setError(null); }}
-          sx={{ minHeight: 40, '& .MuiTabs-indicator': { background: G, height: 2, borderRadius: 1 } }}>
-          {[
-            { label: 'Text to Speech', icon: <VolumeUp sx={{ fontSize: 17 }} /> },
-            { label: 'Document to Speech', icon: <CloudUpload sx={{ fontSize: 17 }} /> },
-          ].map(({ label, icon }, i) => (
-            <Tab key={i} label={label} icon={icon} iconPosition="start" sx={{
-              textTransform: 'none', fontWeight: 600, fontSize: '0.85rem', minHeight: 40,
-              color: tab === i ? '#f59e0b' : 'rgba(17, 17, 17,0.4)',
-              '&.Mui-selected': { color: '#f59e0b' },
-            }} />
-          ))}
-        </Tabs>
+  const settingsContent = (
+    <ElevenLabsSettingsPanel sx={{ border: 'none', boxShadow: 'none', borderRadius: 0 }}>
+      <SettingSection title="Voice">
+        <SettingSelect
+          label="Speaker"
+          value={selectedSpeaker.id}
+          onChange={(e) => {
+            const speaker = NEURAL_SPEAKERS.find((s) => s.id === e.target.value);
+            if (speaker) setSelectedSpeaker(speaker);
+          }}
+          options={NEURAL_SPEAKERS.map((v) => ({
+            value: v.id,
+            label: `${v.name} · native ${v.lang.toUpperCase()}`,
+          }))}
+        />
+        <SettingSelect
+          label="Text language"
+          value={textLang}
+          onChange={(e) => setTextLang(e.target.value)}
+          options={NEURAL_LANGUAGES.filter((l) => l.code !== 'all').map((l) => ({
+            value: l.code,
+            label: l.name,
+          }))}
+        />
+        <Typography sx={{ fontSize: '0.75rem', color: '#888', px: 0.5, mt: -0.5 }}>
+          Language of the text you typed. The voice is chosen by the speaker above — Spark handles pronunciation.
+        </Typography>
+        <SettingSelect
+          label="Output language"
+          value={outputLang}
+          onChange={(e) => setOutputLang(e.target.value)}
+          options={NEURAL_LANGUAGES.filter((l) => l.code !== 'all').map((l) => ({
+            value: l.code,
+            label: l.name,
+          }))}
+        />
+        <Typography sx={{ fontSize: '0.75rem', color: '#888', px: 0.5, mt: -0.5 }}>
+          Pick any speaker and choose which language they speak — they don&apos;t have to match.
+        </Typography>
+      </SettingSection>
+      <SoundtrackPickerSection
+        {...soundtrack}
+        dryAudioUrl={dryAudioUrl}
+        docId={resultDocId}
+        source={resultSource}
+        lang={outputLang}
+        userId={userId}
+        onApplied={(url) => setAudioUrl(url)}
+      />
+      <PropertySection title="Credits" defaultOpen={false}>
+        <PropertyRow label="Balance" value={balance !== null ? balance.toFixed(2) : '…'} />
+        <PropertyRow label="Estimated" value={`${estimatedCost.toFixed(2)} credits`} />
+      </PropertySection>
+      <Box sx={{ px: 3, pb: 3 }}>
+        <ElevenLabsButton
+          variant="contained"
+          fullWidth
+          size="large"
+          loading={loading}
+          disabled={(!text.trim() && !file) || (balance !== null && balance < estimatedCost)}
+          onClick={handleGenerate}
+        >
+          Generate speech
+        </ElevenLabsButton>
       </Box>
+    </ElevenLabsSettingsPanel>
+  );
 
-      {/* Language selectors */}
-      <Grid container spacing={2} alignItems="center" sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={5}>
-          <FormControl fullWidth size="small">
-            <InputLabel sx={LABEL_SX}>Source Language</InputLabel>
-            <Select value={sourceLang} label="Source Language" onChange={e => setSourceLang(e.target.value)} sx={SELECT_SX}>
-              {LANGUAGES.map(l => <MenuItem key={l.value} value={l.value} sx={{ color: '#111111' }}>{l.label}</MenuItem>)}
-            </Select>
-          </FormControl>
-        </Grid>
-        <Grid item xs={12} sm={2} sx={{ display: 'flex', justifyContent: 'center' }}>
-          <IconButton onClick={swapLangs} sx={{
-            width: 36, height: 36, background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)',
-            color: '#f59e0b', '&:hover': { background: 'rgba(245,158,11,0.25)' },
-          }}>
-            <SwapHoriz fontSize="small" />
-          </IconButton>
-        </Grid>
-        <Grid item xs={12} sm={5}>
-          <FormControl fullWidth size="small">
-            <InputLabel sx={LABEL_SX}>Target Languages</InputLabel>
-            <Select multiple value={targetLangs} label="Target Languages" onChange={e => setTargetLangs(e.target.value)} sx={SELECT_SX}
-              renderValue={sel => (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {sel.map(v => <Chip key={v} label={LANGUAGES.find(l => l.value === v)?.label || v} size="small"
-                    sx={{ background: 'rgba(245,158,11,0.2)', color: '#f59e0b', fontSize: '0.72rem', borderRadius: '50px' }} />)}
-                </Box>
-              )}>
-              {LANGUAGES.map(l => <MenuItem key={l.value} value={l.value} sx={{ color: '#111111' }}>{l.label}</MenuItem>)}
-            </Select>
-          </FormControl>
-        </Grid>
-      </Grid>
-
-      {error && <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2.5, borderRadius: '12px', background: 'rgba(239,68,68,0.08)', color: '#f87171', border: '1px solid rgba(239,68,68,0.2)' }}>{error}</Alert>}
-
-      {tab === 0 ? (
+  return (
+    <>
+      <StudioPageShell
+        data-tour="tts-editor"
+        icon={<VolumeUp sx={{ fontSize: 22 }} />}
+        title="Text to Speech"
+        subtitle="Convert text or documents into natural speech"
+        settingsContent={settingsContent}
+        showPropertiesPanel={!isMobile}
+        bottomBar={
+          <StudioPlayerBar
+            voiceName={selectedSpeaker.name}
+            voiceLang={outputLang}
+            audioUrl={audioUrl}
+            disabled={!audioUrl}
+            onDownload={() => {
+              if (!audioUrl) return;
+              const link = document.createElement('a');
+              link.href = audioUrl;
+              link.download = 'synthesis.mp3';
+              link.target = '_blank';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }}
+          />
+        }
+        footer={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+            <Typography sx={{ fontSize: '0.8125rem', color: '#999' }}>Or upload a document</Typography>
+            <ElevenLabsFileUpload
+              onFileSelect={setFile}
+              selectedFile={file}
+              onClearFile={() => setFile(null)}
+              accept=".pdf,.doc,.docx,.txt"
+            />
+            {text.length > 0 && (
+              <Typography sx={{ fontSize: '0.75rem', color: '#999', ml: 'auto' }}>
+                {text.length} characters
+              </Typography>
+            )}
+          </Box>
+        }
+      >
+        <StudioJobProgressBar
+          open={loading}
+          message="Generating speech…"
+          submessage={
+            jobProgress > 0
+              ? `${Math.round(jobProgress)}% complete`
+              : 'Synthesizing audio from your text'
+          }
+        />
         <TextField
-          fullWidth multiline rows={6}
-          label="Enter text for speech synthesis"
-          value={text} onChange={e => setText(e.target.value)}
-          error={text.length > 5000}
-          helperText={`${text.length} / 5000`}
+          multiline
+          minRows={12}
+          placeholder="Start typing here or paste any text you want to turn into lifelike speech..."
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          fullWidth
+          variant="standard"
+          InputProps={{ disableUnderline: true }}
           sx={{
-            mb: 3,
-            '& .MuiOutlinedInput-root': { borderRadius: '14px', color: '#111111', '& fieldset': { borderColor: 'rgba(17, 17, 17, 0.1)' }, '&:hover fieldset': { borderColor: '#f59e0b' }, '&.Mui-focused fieldset': { borderColor: '#f59e0b' } },
-            '& .MuiInputLabel-root': { color: 'rgba(17, 17, 17, 0.5)', '&.Mui-focused': { color: '#f59e0b' } },
-            '& .MuiFormHelperText-root': { color: '#64748b' },
+            '& .MuiInputBase-root': { fontSize: '1rem', lineHeight: 1.7, color: '#1a1a1a' },
+            '& .MuiInputBase-input::placeholder': { color: '#bbb', opacity: 1 },
           }}
         />
-      ) : (
-        <Box sx={{ mb: 3 }}>
-          <input type="file" accept=".pdf,.doc,.docx,.txt" id="synth-file" hidden onChange={e => { setFile(e.target.files[0]); e.target.value = ''; }} />
-          <label htmlFor="synth-file">
-            <Box component="span" sx={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center',
-              ...GLASS, p: 4, cursor: 'pointer',
-              borderStyle: 'dashed',
-              borderColor: file ? '#f59e0b' : 'rgba(17, 17, 17, 0.08)',
-              background: file ? 'rgba(245,158,11,0.05)' : 'rgba(17, 17, 17,0.02)',
-              transition: 'all 0.25s ease',
-              '&:hover': { borderColor: '#f59e0b', background: 'rgba(245,158,11,0.04)' },
-            }}>
-              {file ? (
-                <Stack direction="row" alignItems="center" spacing={1.5}>
-                  <CheckCircle sx={{ color: '#f59e0b', fontSize: 22 }} />
-                  <Box sx={{ color: '#f59e0b', fontWeight: 600, fontSize: '0.9rem' }}>{file.name}</Box>
-                </Stack>
-              ) : (
-                <>
-                  <Box sx={{ width: 52, height: 52, borderRadius: '14px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
-                    <CloudUpload sx={{ fontSize: 26, color: '#f59e0b' }} />
-                  </Box>
-                  <Box sx={{ color: '#111111', fontWeight: 600, fontSize: '0.95rem', mb: 0.5 }}>Click to upload document</Box>
-                  <Box sx={{ color: '#64748b', fontSize: '0.8rem' }}>PDF, DOC, DOCX, TXT · Max 10 MB</Box>
-                </>
-              )}
-            </Box>
-          </label>
-        </Box>
+        <StudioHistorySection sourceId="tts" />
+      </StudioPageShell>
+
+      {error && (
+        <Alert severity="error" onClose={() => setError(null)} sx={{ position: 'fixed', bottom: 88, right: 24, zIndex: 9999, borderRadius: '8px' }}>
+          {error}
+        </Alert>
       )}
-
-      <ActivityStrip active={loading} />
-
-      {/* Action row: cost estimator + button */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1.5, flexWrap: 'wrap' }}>
-        {/* Removed local cost estimator to prioritize global navbar balance */}
-
-        <Button variant="contained" size="large" onClick={handleGenerate}
-          disabled={loading || (tab === 0 ? !text.trim() : !file) || isLowBalance}
-          startIcon={<VolumeUp />}
-          sx={{
-            borderRadius: '50px', textTransform: 'none', fontWeight: 700, px: 4, py: 1.3,
-            background: G, boxShadow: '0 4px 20px rgba(245,158,11,0.2)',
-            '&:hover': { background: 'linear-gradient(135deg,#fbbf24,#d97706)', boxShadow: '0 6px 28px rgba(245,158,11,0.35)', transform: 'translateY(-1px)' },
-            '&.Mui-disabled': { background: 'rgba(17, 17, 17, 0.08)', color: 'rgba(17, 17, 17,0.3)', boxShadow: 'none' },
-          }}>
-          {loading ? 'Generating…' : isLowBalance ? 'Insufficient Credits' : 'Generate Speech'}
-        </Button>
-      </Box>
-      <AvoicesBackdropLoader open={loading} message="Synthesizing Speech…" submessage="Please wait while we generate your high-quality audio." />
-
-      <Drawer anchor="right" open={drawerOpen} onClose={() => setDrawerOpen(false)}
-        PaperProps={{ sx: { width: { xs: '100%', sm: '92vw', md: 600, lg: 640 }, borderLeft: '1px solid rgba(17, 17, 17,0.07)' } }}>
-        {docId && <ViewttsAudioComponent audioId={docId} />}
-      </Drawer>
-    </Box>
+    </>
   );
 }

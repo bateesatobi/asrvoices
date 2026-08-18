@@ -56,7 +56,13 @@ export function formatFullDate(value) {
 
 export function isProcessingStatus(status) {
   const s = (status || 'completed').toLowerCase();
-  return s === 'processing' || s === 'pending' || s === 'started' || s === 'partial';
+  return s === 'processing' || s === 'pending' || s === 'started' || s === 'partial'
+    || s === 'synthesizing' || s === 'mixing' || s === 'rendering' || s === 'uploading';
+}
+
+export function getProcessingStartedAt(row) {
+  if (!row) return null;
+  return row.processing_started_at || row.Date || row.date || row.created_at || null;
 }
 
 const LANG_NAMES = {

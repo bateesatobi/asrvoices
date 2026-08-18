@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Typography, Snackbar, Alert } from "@mui/material";
+import { Stack } from "@mui/material";
 import SummarizeIcon from '@mui/icons-material/Summarize';
 import { dataAPI } from '../services/api';
 import { useNavigate } from 'react-router-dom';
-import { ResultViewLayout, ResultSection } from './result-view';
+import useExportGate from '../hooks/useExportGate';
+import {
+  ResultViewLayout, ResultTextPanel, ExportCreditsChip, ResultViewSnackbar, useResultNotify, ResultShareBar,
+} from './result-view';
 
 const ViewSummaryComponent = ({ translationId, showBack = true }) => {
   const navigate = useNavigate();
@@ -11,8 +14,8 @@ const ViewSummaryComponent = ({ translationId, showBack = true }) => {
   const [scriptTitle, setScriptTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [loading, setLoading] = useState(true);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const { balance, lowCredits, copyText } = useExportGate();
+  const { snackbar, notify, closeNotify } = useResultNotify();
 
   useEffect(() => {
     const fetchEntries = async () => {
@@ -26,42 +29,14 @@ const ViewSummaryComponent = ({ translationId, showBack = true }) => {
           setSummary(entry.Summary || entry.summary || "No summary available.");
         }
       } catch {
-        setSnackbarMessage("Failed to fetch summary");
-        setSnackbarOpen(true);
+        notify("Failed to fetch summary", "error");
       } finally {
         setLoading(false);
       }
     };
     if (translationId) fetchEntries();
     else setLoading(false);
-  }, [translationId]);
-
-  const handleCopyText = async (text) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setSnackbarMessage("Copied to clipboard");
-      setSnackbarOpen(true);
-    } catch {
-      setSnackbarMessage("Failed to copy");
-      setSnackbarOpen(true);
-    }
-  };
-
-  const formatText = (text) => {
-    if (!text) {
-      return (
-        <Typography variant="body1" sx={{ color: 'rgba(17, 17, 17, 0.4)' }}>
-          No content available
-        </Typography>
-      );
-    }
-    const safeText = typeof text === 'string' ? text : String(text);
-    return safeText.split("\n").map((str, index) => (
-      <Typography key={index} variant="body1" sx={{ mb: 1.5, color: 'rgba(17, 17, 17, 0.72)', lineHeight: 1.85 }}>
-        {str.trim() || " "}
-      </Typography>
-    ));
-  };
+  }, [translationId, notify]);
 
   return (
     <>
@@ -76,20 +51,29 @@ const ViewSummaryComponent = ({ translationId, showBack = true }) => {
         emptyMessage="No summary available"
         emptyIcon={SummarizeIcon}
         badges={[{ label: 'Neural analysis' }]}
+        headerActions={
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            <ExportCreditsChip balance={balance} lowCredits={lowCredits} />
+            <ResultShareBar title={scriptTitle} text={summary} onNotify={notify} compact />
+          </Stack>
+        }
       >
-        <ResultSection
+        <ResultTextPanel
           title="Summary"
           icon={SummarizeIcon}
-          onCopy={() => handleCopyText(summary)}
+          text={summary}
+          defaultExpanded
+          editable
+          onSave={setSummary}
+          onCopy={summary ? () => copyText(summary, notify) : undefined}
+          shareTitle={scriptTitle}
+          shareText={summary}
+          onNotify={notify}
           highlight
-        >
-          {formatText(summary)}
-        </ResultSection>
+        />
       </ResultViewLayout>
 
-      <Snackbar open={snackbarOpen} autoHideDuration={3000} onClose={() => setSnackbarOpen(false)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        <Alert severity="success" onClose={() => setSnackbarOpen(false)} sx={{ borderRadius: '12px' }}>{snackbarMessage}</Alert>
-      </Snackbar>
+      <ResultViewSnackbar {...snackbar} onClose={closeNotify} />
     </>
   );
 };

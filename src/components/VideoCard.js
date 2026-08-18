@@ -7,7 +7,7 @@ import {
 } from "@mui/material";
 import { CloudUpload, VideoCall, CheckCircle, Link as LinkIcon } from "@mui/icons-material";
 import ViewVideoComponent from "./ViewVideoComponent";
-import { videoAPI, checkUsageBeforeRequest, handleAPIError } from '../services/api';
+import { videoAPI, checkUsageBeforeRequest, handleAPIError, BASE_URL } from '../services/api';
 import UpgradePromptModal from './UpgradePromptModal';
 import { ActivityStrip } from './progress';
 
@@ -94,9 +94,19 @@ const VideoCard = () => {
       const response = selectedTab === 0
         ? await videoAPI.extractAudioFromVideo(selectedFile, sourceLanguage, user.userId, responseFormat)
         : await videoAPI.uploadVideo(youtubeUrl, sourceLanguage, user.userId, responseFormat);
-      setDocId(response.doc_id);
-      setIsDrawerOpen(true);
-      notify('Video processed successfully!');
+      
+      // Handle async response (new) or sync response (backward compatibility)
+      if (response.job_id) {
+        // New async flow - poll for completion
+        await pollJobCompletion(response.job_id);
+      } else if (response.doc_id) {
+        // Old sync flow - backward compatibility
+        setDocId(response.doc_id);
+        setIsDrawerOpen(true);
+        notify('Video processed successfully!');
+      } else {
+        throw new Error('Invalid response from server');
+      }
     } catch (err) {
       const errorMessage = handleAPIError(err);
       setError(errorMessage);
@@ -104,6 +114,53 @@ const VideoCard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const pollJobCompletion = async (jobId) => {
+    const maxWaitMs = 30 * 60 * 1000; // 30 minutes
+    const startedAt = Date.now();
+
+    return new Promise((resolve, reject) => {
+      const itv = setInterval(async () => {
+        if (Date.now() - startedAt > maxWaitMs) {
+          clearInterval(itv);
+          reject(new Error('Processing timed out. Please try again.'));
+          return;
+        }
+        
+        try {
+          const response = await fetch(`${BASE_URL}/api/jobs/${jobId}?user_id=${user.userId}`);
+          
+          if (!response.ok) {
+            throw new Error(`Job status check failed: ${response.status}`);
+          }
+          
+          const jobData = await response.json();
+          
+          if (jobData.status === 'completed') {
+            clearInterval(itv);
+            const docId = jobData.result?.doc_id;
+            
+            if (!docId) {
+              reject(new Error('Job completed but no doc_id returned'));
+              return;
+            }
+            
+            setDocId(docId);
+            setIsDrawerOpen(true);
+            notify('Video processed successfully!');
+            resolve();
+          } else if (jobData.status === 'failed') {
+            clearInterval(itv);
+            reject(new Error(`Processing failed: ${jobData.error || 'Unknown error'}`));
+          }
+          // Otherwise keep polling
+        } catch (err) {
+          console.error('Job polling error:', err);
+          // Don't stop polling on transient errors
+        }
+      }, 3000); // Poll every 3 seconds
+    });
   };
 
   return (

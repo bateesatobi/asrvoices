@@ -6,6 +6,7 @@ import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.esm.js';
 
 const AC = '#E8A020';
+const TRIM_COLOR = 'rgba(239, 68, 68, 0.22)';
 
 function fmt(t) {
   if (!Number.isFinite(t) || t < 0) return '0:00';
@@ -23,14 +24,25 @@ function fmt(t) {
  *  - segments:   [{ start, end, text, label }] in seconds (regions drawn when timed)
  *  - height:     waveform height (px)
  *  - emptyLabel: text shown when there are no segments
- *
- * Degrades gracefully: if the waveform can't decode (e.g. CORS), it falls back
- * to a native <audio>/<video> element so playback always works.
+ *  - enableTrim: show draggable/resizable trim region + expose onTrimChange
+ *  - onTrimChange: (startSec, endSec) => void
+ *  - onPreviewTrimRef: ref object whose .current becomes preview function
  */
-export default function WaveformTimeline({ url, video = false, segments = [], height = 88, emptyLabel }) {
+export default function WaveformTimeline({
+  url,
+  video = false,
+  segments = [],
+  height = 88,
+  emptyLabel,
+  enableTrim = false,
+  onTrimChange,
+  onPreviewTrimRef,
+}) {
   const containerRef = useRef(null);
   const videoRef = useRef(null);
   const wsRef = useRef(null);
+  const regionsRef = useRef(null);
+  const trimRegionRef = useRef(null);
 
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -38,9 +50,18 @@ export default function WaveformTimeline({ url, video = false, segments = [], he
   const [duration, setDuration] = useState(0);
   const [activeIdx, setActiveIdx] = useState(-1);
   const [failed, setFailed] = useState(false);
+  const [trimRange, setTrimRange] = useState({ start: 0, end: 0 });
 
   const timed = segments.filter(s => Number(s.end) > Number(s.start));
   const hasTimes = timed.length > 0;
+  const isCrossOrigin = Boolean(
+    url && typeof window !== 'undefined' && !url.startsWith(window.location.origin),
+  );
+
+  const emitTrim = useCallback((start, end) => {
+    setTrimRange({ start, end });
+    onTrimChange?.(start, end);
+  }, [onTrimChange]);
 
   useEffect(() => {
     if (!containerRef.current || !url) return undefined;
@@ -48,11 +69,12 @@ export default function WaveformTimeline({ url, video = false, segments = [], he
     let cancelled = false;
     try {
       const regions = RegionsPlugin.create();
+      regionsRef.current = regions;
       const opts = {
         container: containerRef.current,
         waveColor: 'rgba(17,17,17,0.18)',
         progressColor: AC,
-        cursorColor: AC,
+        cursorColor: enableTrim ? '#ef4444' : AC,
         barWidth: 2,
         barGap: 1,
         barRadius: 3,
@@ -68,8 +90,9 @@ export default function WaveformTimeline({ url, video = false, segments = [], he
 
       ws.on('ready', () => {
         if (cancelled) return;
+        const dur = ws.getDuration();
         setReady(true);
-        setDuration(ws.getDuration());
+        setDuration(dur);
         timed.forEach((s, i) => {
           regions.addRegion({
             start: Number(s.start),
@@ -79,16 +102,37 @@ export default function WaveformTimeline({ url, video = false, segments = [], he
             color: `rgba(232,160,32,${i % 2 ? 0.10 : 0.18})`,
           });
         });
+
+        if (enableTrim) {
+          const end = dur > 1 ? dur * 0.95 : dur;
+          const trimRegion = regions.addRegion({
+            id: 'trim',
+            start: 0,
+            end,
+            drag: true,
+            resize: true,
+            color: TRIM_COLOR,
+          });
+          trimRegionRef.current = trimRegion;
+          emitTrim(trimRegion.start, trimRegion.end);
+          trimRegion.on('update-end', () => {
+            emitTrim(trimRegion.start, trimRegion.end);
+          });
+        }
       });
       ws.on('timeupdate', (t) => {
         setCurrent(t);
         if (hasTimes) setActiveIdx(segments.findIndex(s => t >= Number(s.start) && t <= Number(s.end)));
+        if (enableTrim && trimRegionRef.current && t >= trimRegionRef.current.end) {
+          ws.pause();
+        }
       });
       ws.on('play', () => setPlaying(true));
       ws.on('pause', () => setPlaying(false));
       ws.on('finish', () => setPlaying(false));
       ws.on('error', () => setFailed(true));
       regions.on('region-clicked', (region, e) => {
+        if (region.id === 'trim') return;
         e.stopPropagation();
         ws.setTime(region.start);
         ws.play();
@@ -98,11 +142,13 @@ export default function WaveformTimeline({ url, video = false, segments = [], he
     }
     return () => {
       cancelled = true;
+      trimRegionRef.current = null;
+      regionsRef.current = null;
       try { if (ws) ws.destroy(); } catch { /* already torn down */ }
       wsRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url, video, height]);
+  }, [url, video, height, enableTrim]);
 
   const togglePlay = useCallback(() => {
     const ws = wsRef.current;
@@ -119,6 +165,20 @@ export default function WaveformTimeline({ url, video = false, segments = [], he
       videoRef.current.play();
     }
   }, [failed]);
+
+  const previewTrim = useCallback(() => {
+    const ws = wsRef.current;
+    const region = trimRegionRef.current;
+    if (!ws || !region) return;
+    ws.setTime(region.start);
+    ws.play();
+  }, []);
+
+  useEffect(() => {
+    if (onPreviewTrimRef) {
+      onPreviewTrimRef.current = previewTrim;
+    }
+  }, [onPreviewTrimRef, previewTrim]);
 
   return (
     <Box>
@@ -142,6 +202,7 @@ export default function WaveformTimeline({ url, video = false, segments = [], he
               src={url}
               controls
               playsInline
+              {...(isCrossOrigin ? { crossOrigin: 'anonymous' } : {})}
               style={{
                 position: 'absolute',
                 top: 0,
@@ -157,7 +218,6 @@ export default function WaveformTimeline({ url, video = false, segments = [], he
         </Box>
       )}
 
-      {/* Waveform strip */}
       {!failed && (
         <Box sx={{ borderRadius: '14px', border: '1px solid rgba(17,17,17,0.07)', background: 'rgba(17,17,17,0.02)', p: 1.5, mb: hasTimes ? 2 : 0 }}>
           <Stack direction="row" spacing={1.5} alignItems="center">
@@ -167,18 +227,30 @@ export default function WaveformTimeline({ url, video = false, segments = [], he
               </IconButton>
             )}
             <Box sx={{ flex: 1, minWidth: 0 }} ref={containerRef} />
-            <Typography sx={{ fontVariantNumeric: 'tabular-nums', fontSize: '0.72rem', fontWeight: 700, color: 'rgba(17,17,17,0.55)', flexShrink: 0, minWidth: 78, textAlign: 'right' }}>
-              {fmt(current)} / {fmt(duration)}
-            </Typography>
+            <Stack alignItems="flex-end" spacing={0.25} sx={{ flexShrink: 0, minWidth: 88 }}>
+              <Typography sx={{ fontVariantNumeric: 'tabular-nums', fontSize: '0.72rem', fontWeight: 700, color: 'rgba(17,17,17,0.55)', textAlign: 'right' }}>
+                {fmt(current)} / {fmt(duration)}
+              </Typography>
+              {enableTrim && trimRange.end > trimRange.start && (
+                <Typography sx={{ fontVariantNumeric: 'tabular-nums', fontSize: '0.68rem', fontWeight: 700, color: '#ef4444' }}>
+                  {fmt(trimRange.start)} → {fmt(trimRange.end)}
+                </Typography>
+              )}
+            </Stack>
           </Stack>
         </Box>
       )}
 
-      {failed && !video && (
-        <audio controls src={url} style={{ width: '100%' }} />
+      {failed && video && (
+        <Typography sx={{ fontSize: '0.78rem', color: 'rgba(17,17,17,0.45)', mt: 1 }}>
+          Waveform preview unavailable — use the video player above.
+        </Typography>
       )}
 
-      {/* Segment list */}
+      {failed && !video && (
+        <audio controls src={url} crossOrigin="anonymous" style={{ width: '100%' }} />
+      )}
+
       {hasTimes && (
         <Stack spacing={0.75} sx={{ maxHeight: 360, overflowY: 'auto', pr: 0.5 }}>
           {segments.map((s, i) => {

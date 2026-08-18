@@ -1,8 +1,8 @@
 import React from "react";
-import TranscribeComponent from "../components/TranscribeComponent";
+import TranscribeElevenLabs from "../components/Redesigned/TranscribeElevenLabs";
 
 const Transcribe = () => {
-    return <TranscribeComponent />;
+    return <TranscribeElevenLabs />;
 }
 
 export default Transcribe;

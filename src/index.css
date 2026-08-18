@@ -15,18 +15,30 @@
   --offwhite-mid:  #F0EDE5;   /* Secondary light surface                     */
   --offwhite-dark: #E0D9CC;   /* Borders / dividers on light bg              */
 
-  /* ── Semantic aliases ────────────────────────────────────────────────── */
+  /* ── Semantic aliases (ElevenLabs-inspired) ──────────────────────────── */
   --bg-primary:    #ffffff;
-  --bg-secondary:  var(--offwhite);
-  --text-primary:  var(--black);
-  --text-secondary: rgba(17,17,17,0.6);
+  --bg-secondary:  #fafafa;
+  --bg-tertiary:   #f5f5f5;
+  --text-primary:  #1a1a1a;
+  --text-secondary: #666666;
+  --text-tertiary:  #999999;
   --accent-primary: var(--gold);
   --accent-secondary: var(--gold-dark);
   --accent-glow:   var(--gold-glow);
+  
+  --border-light:  #f0f0f0;
+  --border-default: #e8e8e8;
+  --border-dark:   #d0d0d0;
 
-  --glass-bg:      rgba(248,246,240,0.6);
+  --glass-bg:      rgba(255,255,255,0.8);
   --glass-border:  rgba(232,160,32,0.18);
   --glass-shadow:  0 8px 32px 0 rgba(0,0,0,0.08);
+  
+  /* ── ElevenLabs-style shadows ───────────────────────────────────────── */
+  --shadow-sm:     0 2px 4px rgba(0,0,0,0.04);
+  --shadow-md:     0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg:     0 12px 24px rgba(0,0,0,0.12);
+  --shadow-xl:     0 20px 60px rgba(0,0,0,0.15);
 }
 
 body {
@@ -34,7 +46,7 @@ body {
   font-family: 'Outfit', 'Inter', -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #FAFAF8;
+  background-color: #FAFAFA; /* ElevenLabs-style light gray background */
   color: var(--text-primary);
   background-image: none;
   min-height: 100vh;

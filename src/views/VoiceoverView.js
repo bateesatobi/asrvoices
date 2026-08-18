@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Container } from '@mui/material';
-import VoiceoverStudio from '../components/VoiceoverStudio';
+import { Box } from '@mui/material';
+import VoiceoverElevenLabs from '../components/Redesigned/VoiceoverElevenLabs';
 
 const VoiceoverView = () => {
   const [userId, setUserId] = useState(null);
@@ -11,10 +11,8 @@ const VoiceoverView = () => {
   }, []);
 
   return (
-    <Box sx={{ width: '100%', minHeight: '100vh', background: 'transparent' }}>
-      <Container maxWidth="xl">
-        {userId && <VoiceoverStudio userId={userId} />}
-      </Container>
+    <Box sx={{ width: '100%', height: '100%', minHeight: 0, background: 'transparent' }}>
+      {userId && <VoiceoverElevenLabs userId={userId} />}
     </Box>
   );
 };

@@ -1,3 +1,10 @@
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
-Disallow:
+Allow: /
+Allow: /get-started
+Allow: /pricing
+Allow: /documentation
+Allow: /language-support
+Disallow: /dashboard/
+
+Sitemap: https://voices.phosaico.com/sitemap.xml

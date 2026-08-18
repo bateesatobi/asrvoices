@@ -1,7 +1,7 @@
-import SynthesisStudio from "../components/SynthesisStudio";
+import SynthesizeComponent from "../components/SynthesizeComponent";
 
 const Text2Speech = () => {
-    return <SynthesisStudio />;
+    return <SynthesizeComponent />;
 }
 
 export default Text2Speech;

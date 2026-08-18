@@ -5,9 +5,14 @@
 
 import axios from 'axios';
 import { parseError, notifyUser } from '../utils/errors';
+import { NEURAL_SPEAKERS } from '../constants/neural_config';
 
 // Base configuration
-export const BASE_URL = (process.env.REACT_APP_API_URL || 'https://phosai-backend-api-fq4x.onrender.com').replace(/\/$/, '');
+export const BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+
+/** API-proxied playback for studio videos (fixes R2 missing Content-Type / CORS). */
+export const studioPlaybackUrl = (kind, docId) =>
+  docId ? `${BASE_URL}/api/studio/${kind}/${docId}/play` : null;
 const REQUEST_TIMEOUT = 0; // Disabled timeouts for sync operations
 const LONG_REQUEST_TIMEOUT = 0; // Disabled timeouts for long operations
 
@@ -348,15 +353,17 @@ export const videoAPI = {
     formData.append('source_lang', sourceLang);
     formData.append('user_id', userId);
     formData.append('response_format', responseFormat);
+    formData.append('async_mode', 'true');
 
     const response = await apiClient.post('/extract_audio_from_video/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: LONG_REQUEST_TIMEOUT
+      timeout: LONG_REQUEST_TIMEOUT,
     });
     return response.data;
   },
 
-  // Finalize dubbing: re-upload video + synthesised segment payload → server muxes with ffmpeg
+  // Finalize dubbing: synthesised segment payload → server muxes with ffmpeg.
+  // Pass options.videoUrl to reuse the video already stored from transcription (faster).
   finalizeDubbing: async (docId, segments, userId, videoFile, options = {}) => {
     const {
       videoDurationMins = 1.0,
@@ -365,6 +372,8 @@ export const videoAPI = {
       trimStartMs = 0,
       trimEndMs = 0,
       background = false,
+      bgmTrack = null,
+      videoUrl = null,
     } = options;
 
     const formData = new FormData();
@@ -377,7 +386,12 @@ export const videoAPI = {
     formData.append('trim_start_ms', String(trimStartMs));
     formData.append('trim_end_ms', String(trimEndMs));
     formData.append('background', String(background));
-    formData.append('video_file', videoFile);
+    if (videoUrl) {
+      formData.append('video_url', videoUrl);
+    } else if (videoFile) {
+      formData.append('video_file', videoFile);
+    }
+    if (bgmTrack) formData.append('bgm_track', bgmTrack);
 
     const response = await apiClient.post('/finalize_dubbing/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -388,10 +402,11 @@ export const videoAPI = {
 
   // Finalize image slideshow: ordered images + segment scripts → server synthesises audio & compiles 1080p MP4
   finalizeImageSlideshow: async (segments, userId, imageFiles, options = {}) => {
-    const { bgmTrack = null } = options;
+    const { bgmTrack = null, burnSubtitles = false } = options;
     const formData = new FormData();
     formData.append('user_id', userId);
     formData.append('segments_json', JSON.stringify(segments));
+    formData.append('burn_subtitles', String(burnSubtitles));
     if (bgmTrack) formData.append('bgm_track', bgmTrack);
     imageFiles.forEach(file => {
       formData.append('images', file);
@@ -415,23 +430,60 @@ export const videoAPI = {
 
   // Mux rendered narration onto uploaded video (replaces original audio)
   finalizeNarrationVideo: async (docId, userId, videoFile, options = {}) => {
-    const { bgmTrack = null } = options;
+    const { bgmTrack = null, burnSubtitles = false } = options;
     const formData = new FormData();
     formData.append('user_id', userId);
     formData.append('doc_id', docId);
     formData.append('video_file', videoFile);
+    formData.append('burn_subtitles', String(burnSubtitles));
     if (bgmTrack) formData.append('bgm_track', bgmTrack);
     const response = await apiClient.post('/finalize_narration_video/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: LONG_REQUEST_TIMEOUT,
     });
-    return response.data;
+    const data = response.data;
+    if (data.job_id && data.status === 'starting') {
+      const job = await pollJobUntilComplete(data.job_id, options);
+      return {
+        ...data,
+        narration_video_url: job.result?.narration_video_url,
+        status: 'completed',
+      };
+    }
+    return data;
   },
 
   listUserJobs: async (userId, limit = 50) => {
     const response = await apiClient.get(`/api/jobs/user/${userId}`, { params: { limit } });
     return response.data;
   },
+
+  listActiveJobs: async (userId, limit = 30) => {
+    const response = await apiClient.get(`/api/jobs/user/${userId}`, {
+      params: { limit, active_only: true },
+    });
+    return response.data;
+  },
+};
+
+/** Poll a background job until completed or failed. */
+export const pollJobUntilComplete = async (jobId, options = {}) => {
+  const {
+    timeoutMs = 30 * 60 * 1000,
+    intervalMs = 3000,
+    onProgress,
+  } = options;
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    const job = await videoAPI.getJobStatus(jobId);
+    if (onProgress) onProgress(job);
+    if (job.status === 'completed') return job;
+    if (job.status === 'error' || job.status === 'failed') {
+      throw new Error(job.error || 'Job failed');
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  throw new Error('Job timed out');
 };
 
 /**
@@ -452,6 +504,20 @@ export const translationAPI = {
 
     const response = await apiClient.post('/translate', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+
+  // Translate many segments in one request (dubbing captions)
+  translateBatch: async (segments, sourceLang, targetLangs, userId) => {
+    const formData = new FormData();
+    formData.append('segments_json', JSON.stringify(segments));
+    formData.append('source_lang', sourceLang);
+    formData.append('user_id', userId);
+    targetLangs.forEach((lang) => formData.append('target_langs', lang));
+    const response = await apiClient.post('/translate/batch', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: LONG_REQUEST_TIMEOUT,
     });
     return response.data;
   },
@@ -596,18 +662,58 @@ export const summarizationAPI = {
  */
 export const ttsAPI = {
   // Synthesize text to speech
-  synthesizeText: async (text, speakerId, language, userId) => {
+  synthesizeText: async (text, speakerId, language, userId, bgmTrack = null, options = {}) => {
     const formData = new FormData();
     formData.append('doc', text);
-    formData.append('source_lang', language || 'swa');
+    const speaker = NEURAL_SPEAKERS.find((s) => s.id === speakerId);
+    const lang = speaker?.lang || language || 'swa';
+    formData.append('source_lang', lang);
     formData.append('speaker_name', speakerId);
-    formData.append('target_langs', language || 'swa'); // Use selected language as target to avoid redundant translation
+    formData.append('target_langs', lang);
+    formData.append('text_lang', options.textLang || 'en');
     formData.append('user_id', userId);
+    if (bgmTrack) formData.append('bgm_track', bgmTrack);
 
     const response = await apiClient.post('/vocify', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    return response.data;
+    const data = response.data;
+    if (data.job_id && data.status === 'processing') {
+      const job = await pollJobUntilComplete(data.job_id, options);
+      const translations = job.result?.translations_with_tts;
+      const audioUrl =
+        job.result?.audio_url ||
+        translations?.[language]?.audio_file_path ||
+        (translations &&
+          Object.values(translations).find((t) => t && t.audio_file_path)?.audio_file_path);
+      const dryUrl =
+        translations?.[language]?.dry_audio_path ||
+        translations?.[language]?.audio_file_path ||
+        audioUrl;
+      const langEntry = translations?.[language];
+      const ttsError =
+        langEntry?.error ||
+        (translations &&
+          Object.values(translations).find((t) => t && t.error)?.error);
+      if (ttsError) {
+        throw new Error(
+          typeof ttsError === 'string'
+            ? ttsError.replace(/^TTS failed:\s*/i, '')
+            : 'Speech synthesis failed. Try another voice or language.'
+        );
+      }
+      if (!audioUrl && !dryUrl) {
+        throw new Error('No audio was generated. Try another voice or language.');
+      }
+      return {
+        doc_id: job.result?.doc_id || data.doc_id,
+        audio_file_url: audioUrl,
+        dry_audio_url: dryUrl,
+        translations,
+        status: 'completed',
+      };
+    }
+    return data;
   },
 
   // Get vocify voices
@@ -623,19 +729,43 @@ export const ttsAPI = {
   },
 
   // Translate document with TTS (Books / Articles)
-  translateDocumentWithTTS: async (file, sourceLang, targetLangs, speakerName, userId) => {
+  translateDocumentWithTTS: async (file, sourceLang, targetLangs, speakerName, userId, bgmTrack = null, options = {}) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('source_lang', sourceLang);
     formData.append('target_langs', JSON.stringify(targetLangs));
     formData.append('speaker_name', speakerName);
     formData.append('user_id', userId);
+    if (bgmTrack) formData.append('bgm_track', bgmTrack);
 
     const response = await apiClient.post('/translate_document_with_tts/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: LONG_REQUEST_TIMEOUT
     });
-    return response.data;
+    const data = response.data;
+    if (data.job_id && data.status === 'processing') {
+      const job = await pollJobUntilComplete(data.job_id, options);
+      const translations = job.result?.translations_with_tts;
+      const primaryLang = Array.isArray(targetLangs) ? targetLangs[0] : targetLangs;
+      const langEntry = translations?.[primaryLang] || translations?.[sourceLang];
+      const ttsError =
+        langEntry?.error ||
+        (translations &&
+          Object.values(translations).find((t) => t && t.error)?.error);
+      if (ttsError) {
+        throw new Error(
+          typeof ttsError === 'string'
+            ? ttsError.replace(/^TTS failed:\s*/i, '')
+            : 'Speech synthesis failed. Try another voice or language.'
+        );
+      }
+      return {
+        doc_id: job.result?.doc_id || data.doc_id,
+        translations,
+        status: 'completed',
+      };
+    }
+    return data;
   },
 
   // Get document voice
@@ -651,8 +781,7 @@ export const ttsAPI = {
   },
 
   // Batch render professional voiceover narration from script blocks
-  renderVoiceover: async (blocks, userId, title = 'Untitled Narration', bgmTrack = null) => {
-    // blocks: [{ text, speaker_id, language, pitch, rate }]
+  renderVoiceover: async (blocks, userId, title = 'Untitled Narration', bgmTrack = null, options = {}) => {
     const body = {
       user_id: userId,
       blocks: blocks.map((b) => ({
@@ -666,8 +795,65 @@ export const ttsAPI = {
     };
     if (bgmTrack) body.bgm_track = bgmTrack;
     const response = await apiClient.post('/render_voiceover/', body, { timeout: LONG_REQUEST_TIMEOUT });
-    return response.data;
+    const data = response.data;
+    if (data.job_id && (data.status === 'starting' || data.status === 'processing')) {
+      const job = await pollJobUntilComplete(data.job_id, options);
+      return {
+        ...(job.result || {}),
+        doc_id: job.result?.doc_id || data.doc_id,
+        status: 'completed',
+      };
+    }
+    return data;
   }
+};
+
+/**
+ * SOUNDTRACK / BGM APIs
+ */
+export const soundtracksAPI = {
+  getTracks: async (refresh = false) => {
+    const response = await apiClient.get('/api/soundtracks', {
+      params: refresh ? { refresh: true } : undefined,
+    });
+    return response.data;
+  },
+
+  getTrack: async (trackId) => {
+    const response = await apiClient.get(`/api/soundtracks/${encodeURIComponent(trackId)}`);
+    return response.data;
+  },
+
+  /** Mix soundtrack onto existing audio/video (no re-TTS). Overwrites stable R2 key. */
+  applySoundtrack: async (docId, source, userId, options = {}) => {
+    const { bgmTrack = null, bgmVolume = 0.12, lang = null } = options;
+    const response = await apiClient.post('/api/apply_soundtrack', {
+      user_id: userId,
+      doc_id: docId,
+      source,
+      bgm_track: bgmTrack,
+      bgm_volume: bgmVolume,
+      lang,
+    });
+    return response.data;
+  },
+};
+
+/**
+ * SPEAKER PREVIEW APIs (public voice library samples)
+ */
+export const speakersAPI = {
+  getPreviews: async (refresh = false) => {
+    const response = await apiClient.get('/api/speakers/previews', {
+      params: refresh ? { refresh: true } : undefined,
+    });
+    return response.data;
+  },
+
+  getPreview: async (speakerId) => {
+    const response = await apiClient.get(`/api/speakers/previews/${encodeURIComponent(speakerId)}`);
+    return response.data;
+  },
 };
 
 /**
@@ -820,16 +1006,35 @@ export const dataAPI = {
     return response.data;
   },
 
+  /** Trim remote audio/video and return blob for download. */
+  trimMedia: async (mediaUrl, trimStartMs, trimEndMs, userId, mediaType = 'auto') => {
+    const formData = new FormData();
+    formData.append('media_url', mediaUrl);
+    formData.append('trim_start_ms', String(trimStartMs));
+    formData.append('trim_end_ms', String(trimEndMs));
+    formData.append('user_id', userId || '');
+    formData.append('media_type', mediaType);
+    const response = await axios.post(`${BASE_URL}/trim_media/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      responseType: 'blob',
+      timeout: LONG_REQUEST_TIMEOUT,
+    });
+    return response.data;
+  },
+
   // Get all translations for user (Unified: Text + Documents)
   getTranslations: async (userId) => {
     const response = await apiClient.post('/get_unified_translations', { user_id: userId });
     return response.data;
   },
 
-  // Get specific translation by doc_id
+  // Get specific translation by doc_id (text + document collections)
   getTranslation: async (docId) => {
     const response = await apiClient.post('/get_translation', { doc_id: docId });
-    return response.data;
+    const entries = Array.isArray(response.data?.entries) ? response.data.entries : [];
+    if (entries.length > 0) return response.data;
+    const docResponse = await apiClient.post('/get_document', { doc_id: docId });
+    return docResponse.data;
   },
 
   // Get document translations for user

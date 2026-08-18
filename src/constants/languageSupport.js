@@ -7,6 +7,7 @@ const FLAG_BY_CODE = {
   en: '🇬🇧', ach: '🇺🇬', teo: '🇺🇬', fat: '🇬🇭', hau: '🇳🇬', ibo: '🇳🇬', kik: '🇰🇪',
   kin: '🇷🇼', lug: '🇺🇬', lgg: '🇺🇬', luo: '🇰🇪', pcm: '🇳🇬', nyn: '🇺🇬', swa: '🇹🇿',
   twi: '🇬🇭', wol: '🇸🇳', yor: '🇳🇬', fr: '🇫🇷', es: '🇪🇸', pt: '🇵🇹', de: '🇩🇪', ar: '🇸🇦',
+  xog: '🇺🇬', laj: '🇺🇬', alz: '🇺🇬', nyo: '🇺🇬', kdj: '🇺🇬', pok: '🇰🇪', lth: '🇺🇬',
 };
 
 const REGION_BY_CODE = {
@@ -14,6 +15,7 @@ const REGION_BY_CODE = {
   ach: 'Uganda', teo: 'Uganda', lug: 'Uganda', lgg: 'Uganda', nyn: 'Uganda', luo: 'East Africa',
   swa: 'East Africa', kin: 'Rwanda', hau: 'West Africa', ibo: 'West Africa', yor: 'West Africa',
   wol: 'West Africa', fat: 'West Africa', twi: 'West Africa', kik: 'East Africa', pcm: 'Nigeria',
+  xog: 'Uganda', laj: 'Uganda', alz: 'Uganda', nyo: 'Uganda', kdj: 'Uganda', pok: 'East Africa', lth: 'Uganda',
 };
 
 /** Global languages supported in translate / transcribe / summarize pipelines */
@@ -24,6 +26,18 @@ export const GLOBAL_LANGUAGES = [
   { code: 'pt', name: 'Portuguese', region: 'Global', tier: 'core' },
   { code: 'de', name: 'German', region: 'Europe', tier: 'core' },
   { code: 'ar', name: 'Arabic', region: 'Middle East', tier: 'core' },
+];
+
+/** Local MT languages (Moko / Azure) beyond neural TTS catalog */
+export const LOCAL_MT_LANGUAGES = [
+  { code: 'xog', name: 'Lusoga', region: 'Uganda', tier: 'local_mt' },
+  { code: 'laj', name: 'Langi', region: 'Uganda', tier: 'local_mt' },
+  { code: 'alz', name: 'Alur', region: 'Uganda', tier: 'local_mt' },
+  { code: 'nyo', name: 'Runyoro', region: 'Uganda', tier: 'local_mt' },
+  { code: 'kdj', name: 'Ngakarimojong', region: 'Uganda', tier: 'local_mt' },
+  { code: 'pok', name: 'Pokot', region: 'East Africa', tier: 'local_mt' },
+  { code: 'lth', name: 'Ethur', region: 'Uganda', tier: 'local_mt' },
+  { code: 'lgg', name: 'Lugbara', region: 'Uganda', tier: 'local_mt' },
 ];
 
 /** African neural voice languages (from neural_config) */
@@ -38,7 +52,7 @@ export const NEURAL_PLATFORM_LANGUAGES = NEURAL_LANG_CODES.map(code => {
   };
 });
 
-export const PLATFORM_LANGUAGES = [...GLOBAL_LANGUAGES, ...NEURAL_PLATFORM_LANGUAGES]
+export const PLATFORM_LANGUAGES = [...GLOBAL_LANGUAGES, ...NEURAL_PLATFORM_LANGUAGES, ...LOCAL_MT_LANGUAGES]
   .filter((lang, i, arr) => arr.findIndex(x => x.code === lang.code) === i)
   .map(lang => ({
     ...lang,

@@ -36,7 +36,7 @@ import {
   Face5,
   Face6,
 } from '@mui/icons-material';
-import { videoAPI, subscriptionAPI, translationAPI, getFriendlyErrorMessage } from '../services/api';
+import { videoAPI, subscriptionAPI, translationAPI, getFriendlyErrorMessage, BASE_URL } from '../services/api';
 import { NEURAL_LANGUAGES, NEURAL_SPEAKERS, NEURAL_LANGUAGE_MAP } from '../constants/neural_config';
 import { AC, G, GLASS, STEPPER_SX } from '../utils/mediaVault';
 import CreditEstimateChip from './CreditEstimateChip';
@@ -208,10 +208,11 @@ export default function VideoDubbingStudio({ userId }) {
   
   const [loading, setLoading]                 = useState(false);
   const [exporting, setExporting]             = useState(false);
-  const [dubJobProgress, setDubJobProgress]   = useState({ status: '', progress: 0 });
+  const [dubJobProgress, setDubJobProgress]   = useState({ status: '', progress: 0, message: '' });
   const [error, setError]                     = useState(null);
   const [pipelineHint, setPipelineHint]       = useState(null);
   const [docId, setDocId]                     = useState(null);
+  const [sourceVideoUrl, setSourceVideoUrl]   = useState(null);
   const [segments, setSegments]               = useState([]);
   const [finalMasterUrl, setFinalMasterUrl]   = useState(null);
   const [successMsg, setSuccessMsg]           = useState(null);
@@ -242,7 +243,11 @@ export default function VideoDubbingStudio({ userId }) {
       try {
         const job = await videoAPI.getJobStatus(jobId);
         const progress = Number.isFinite(job?.progress) ? job.progress : 0;
-        setDubJobProgress({ status: job?.status || 'processing', progress });
+        setDubJobProgress({
+          status: job?.status || 'processing',
+          progress,
+          message: job?.progress_message || '',
+        });
         if (job?.status === 'completed' && job?.result?.dubbed_video_url) {
           setFinalMasterUrl(job.result.dubbed_video_url);
           setSuccessMsg('Dubbing completed successfully!');
@@ -252,7 +257,7 @@ export default function VideoDubbingStudio({ userId }) {
           stopDubPoll();
           return;
         }
-        if (job?.status === 'error') {
+        if (job?.status === 'error' || job?.status === 'failed') {
           setError(job?.error || 'Dubbing failed');
           setExporting(false);
           stopDubPoll();
@@ -308,35 +313,26 @@ export default function VideoDubbingStudio({ userId }) {
     setError(null);
 
     try {
-      // Translate each segment individually since backend expects single text string
-      const translatedSegments = await Promise.all(
-        segments.map(async (seg) => {
-          try {
-            const response = await translationAPI.translateText(
-              seg.text,
-              sourceLang,
-              [targetLang],
-              userId
-            );
-
-            // Extract translated text from response
-            // Response format: { targetLang: [{ text: translated_text, start_time, end_time }, ...] }
-            const targetTranslations = response[targetLang] || response[targetLang.toUpperCase()] || [];
-            const translatedText = targetTranslations[0]?.text || seg.text;
-
-            return {
-              ...seg,
-              translated: translatedText
-            };
-          } catch (err) {
-            console.warn(`Translation failed for segment: ${seg.text}`, err);
-            return {
-              ...seg,
-              translated: seg.text // Fallback to original text if translation fails
-            };
-          }
-        })
+      const payload = segments.map((seg, i) => ({
+        item_id: String(i),
+        segment_index: i,
+        text: seg.text,
+        start_time: seg.start_time,
+        end_time: seg.end_time,
+      }));
+      const response = await translationAPI.translateBatch(
+        payload,
+        sourceLang,
+        [targetLang],
+        userId,
       );
+      const byId = Object.fromEntries(
+        (response.segments || []).map((s) => [String(s.item_id), s.translated || s.text]),
+      );
+      const translatedSegments = segments.map((seg, i) => ({
+        ...seg,
+        translated: byId[String(i)] || seg.text,
+      }));
 
       setSegments(translatedSegments);
       setSuccessMsg("Translation completed successfully! Review the translations below.");
@@ -383,12 +379,70 @@ export default function VideoDubbingStudio({ userId }) {
     setLoading(true); setError(null);
     try {
       const res = await videoAPI.extractAudioFromVideo(videoFile, sourceLang, userId);
-      setDocId(res.doc_id);
-      pollSegments(res.doc_id);
+      
+      // Check if response is async (has job_id) or sync (has doc_id)
+      if (res.job_id) {
+        // New async flow - poll for job completion
+        await pollJobCompletion(res.job_id);
+      } else if (res.doc_id) {
+        // Old sync flow - backward compatibility
+        setDocId(res.doc_id);
+        pollSegments(res.doc_id);
+      } else {
+        throw new Error('Invalid response from server');
+      }
     } catch (err) {
       setError(getFriendlyErrorMessage(err, 'Failed to process video. Please try again.'));
       setLoading(false);
     }
+  };
+
+  const pollJobCompletion = async (jobId) => {
+    const maxWaitMs = 30 * 60 * 1000; // 30 minutes for async jobs
+    const startedAt = Date.now();
+
+    const itv = setInterval(async () => {
+      if (Date.now() - startedAt > maxWaitMs) {
+        clearInterval(itv);
+        setLoading(false);
+        setError('Processing timed out. Please try again with a shorter video or contact support.');
+        return;
+      }
+      
+      try {
+        // Poll job status
+        const response = await fetch(`${BASE_URL}/api/jobs/${jobId}?user_id=${userId}`);
+        
+        if (!response.ok) {
+          throw new Error(`Job status check failed: ${response.status}`);
+        }
+        
+        const jobData = await response.json();
+        
+        if (jobData.status === 'completed') {
+          clearInterval(itv);
+          const docId = jobData.result?.doc_id;
+          
+          if (!docId) {
+            throw new Error('Job completed but no doc_id returned');
+          }
+          
+          if (jobData.result?.video_url) {
+            setSourceVideoUrl(jobData.result.video_url);
+          }
+          setDocId(docId);
+          pollSegments(docId);
+        } else if (jobData.status === 'failed' || jobData.status === 'error') {
+          clearInterval(itv);
+          setLoading(false);
+          setError(`Processing failed: ${jobData.error || 'Unknown error'}`);
+        }
+        // Otherwise keep polling (status is 'pending' or 'processing')
+      } catch (err) {
+        console.error('Job polling error:', err);
+        // Don't stop polling on transient errors
+      }
+    }, 3000); // Poll every 3 seconds
   };
 
   const pollSegments = async did => {
@@ -409,6 +463,7 @@ export default function VideoDubbingStudio({ userId }) {
         const transcriptions = entry?.timestamped_transcriptions;
 
         if (Array.isArray(transcriptions) && transcriptions.length > 0) {
+          if (entry?.url) setSourceVideoUrl(entry.url);
           const segs = transcriptions.map(s => ({
             ...s, translated: '',
             voice: globalSpeaker.id,
@@ -428,7 +483,7 @@ export default function VideoDubbingStudio({ userId }) {
   };
 
   const handleExportMaster = async (runInBackground = false) => {
-    if (!docId || !videoFile) return;
+    if (!docId || (!sourceVideoUrl && !videoFile)) return;
     setExporting(true);
     setDubJobProgress({ status: 'processing', progress: 0 });
     setError(null);
@@ -440,14 +495,15 @@ export default function VideoDubbingStudio({ userId }) {
           segment_index: i, text: s.translated || s.text, target_lang: s.lang,
           speaker_id: s.voice, start_time_ms: (s.start_time || 0) * 1000, end_time_ms: (s.end_time || 0) * 1000,
         })),
-        userId, videoFile,
+        userId, sourceVideoUrl ? null : videoFile,
         { 
           videoDurationMins: videoDuration / 60, 
           originalVolume: 0,
           burnSubtitles, 
           trimStartMs: Math.round(trimRange[0] * 1000), 
           trimEndMs: Math.round(trimRange[1] * 1000),
-          background: runInBackground
+          background: runInBackground,
+          videoUrl: sourceVideoUrl || undefined,
         }
       );
       if (runInBackground) {
@@ -509,10 +565,14 @@ export default function VideoDubbingStudio({ userId }) {
         open={loading || exporting}
         message={exporting ? 'Rendering master video…' : 'Processing audio & transcribing…'}
         submessage={
-          exporting && dubJobProgress.status
-            ? ({
+          exporting && (dubJobProgress.message || dubJobProgress.status)
+            ? (dubJobProgress.message || {
                 starting: 'Preparing dubbing job…',
-                processing: 'Synthesizing voices and muxing video…',
+                processing: 'Batch voice synthesis and muxing video…',
+                synthesizing: 'Batch voice synthesis in progress…',
+                mixing: 'Mixing dubbed audio…',
+                rendering: 'Rendering dubbed video…',
+                uploading: 'Uploading final video…',
                 completed: 'Finalizing export…',
                 error: 'Export failed',
               }[dubJobProgress.status] || `Status: ${dubJobProgress.status}`)

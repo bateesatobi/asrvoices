@@ -22,11 +22,18 @@ import useFileDrop from '../hooks/useFileDrop';
 import { UsageTip, useStudioTour } from './onboarding';
 import { TOUR_IDS, transcribeTour } from './onboarding/tours';
 const SELECT_SX = {
-  borderRadius: '12px', color: '#111111', fontSize: '0.9rem',
-  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(17, 17, 17, 0.15)' },
-  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: AC },
+  bgcolor: '#fafafa',
+  borderRadius: '8px',
+  fontSize: '0.875rem',
+  '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e8e8e8' },
+  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#d0d0d0' },
+  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#1a1a1a', borderWidth: '2px' },
 };
-const LABEL_SX = { color: 'rgba(17, 17, 17, 0.5)', '&.Mui-focused': { color: AC } };
+const LABEL_SX = { 
+  color: '#666666',
+  fontSize: '0.875rem',
+  '&.Mui-focused': { color: '#1a1a1a' } 
+};
 
 const MAX_FILE_MB = 50;
 const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;
@@ -42,8 +49,37 @@ const FORMAT_OPTIONS = [
 function StepNav({ onBack, onNext, backDisabled, nextDisabled, nextLabel = 'Next' }) {
   return (
     <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-      <Button disabled={backDisabled} onClick={onBack} sx={{ borderRadius: '10px', fontWeight: 800, textTransform: 'none', color: 'rgba(17,17,17,0.6)' }}>Back</Button>
-      <Button variant="contained" onClick={onNext} disabled={nextDisabled} sx={{ background: G, borderRadius: '10px', fontWeight: 800, textTransform: 'none', boxShadow: '0 4px 18px rgba(232, 160, 32, 0.25)' }}>{nextLabel}</Button>
+      <Button 
+        disabled={backDisabled} 
+        onClick={onBack} 
+        sx={{ 
+          borderRadius: '8px',
+          fontWeight: 600,
+          fontSize: '0.875rem',
+          textTransform: 'none',
+          color: '#666',
+          border: '1px solid #e8e8e8',
+          '&:hover': { bgcolor: '#fafafa', borderColor: '#d0d0d0' }
+        }}
+      >
+        Back
+      </Button>
+      <Button 
+        variant="contained" 
+        onClick={onNext} 
+        disabled={nextDisabled} 
+        sx={{ 
+          background: '#1a1a1a',
+          borderRadius: '8px',
+          fontWeight: 600,
+          fontSize: '0.875rem',
+          textTransform: 'none',
+          boxShadow: 'none',
+          '&:hover': { background: '#333', boxShadow: 'none' }
+        }}
+      >
+        {nextLabel}
+      </Button>
     </Stack>
   );
 }
@@ -229,10 +265,11 @@ export default function TranscribeComponent() {
           <input ref={fileInput} type="file" accept="audio/*,video/*" hidden onChange={e => { selectFile(e.target.files[0]); e.target.value = ''; }} />
           <Box onClick={() => fileInput.current?.click()} {...dropProps} sx={{
             p: 4, textAlign: 'center', cursor: 'pointer',
-            border: '1px dashed', borderRadius: '16px',
-            borderColor: isDragOver || file ? AC : 'rgba(17,17,17,0.12)',
-            background: isDragOver ? 'rgba(232,160,32,0.1)' : file ? 'rgba(232,160,32,0.05)' : 'rgba(17,17,17,0.02)',
-            transition: 'all 0.25s ease',
+            border: '2px dashed',
+            borderRadius: '12px',
+            borderColor: isDragOver || file ? AC : '#e8e8e8',
+            background: isDragOver ? 'rgba(232,160,32,0.04)' : file ? 'rgba(232,160,32,0.04)' : '#fafafa',
+            transition: 'all 0.2s ease',
             '&:hover': { borderColor: AC, background: 'rgba(232,160,32,0.04)' },
           }}>
             {file ? (
@@ -242,12 +279,29 @@ export default function TranscribeComponent() {
               </Stack>
             ) : (
               <>
-                <Box sx={{ width: 60, height: 60, borderRadius: '16px', background: 'rgba(232,160,32,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 2 }}>
-                  <CloudUpload sx={{ fontSize: 30, color: AC }} />
+                <Box sx={{ width: 60, height: 60, borderRadius: '12px', background: 'rgba(232,160,32,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 2 }}>
+                  <CloudUpload sx={{ fontSize: 32, color: AC }} />
                 </Box>
-                <Typography sx={{ color: '#111111', fontWeight: 700, fontSize: '0.95rem', mb: 0.5 }}>Drop your file or click to browse</Typography>
-                <Typography sx={{ color: 'rgba(17,17,17,0.5)', fontSize: '0.8rem', mb: 2 }}>Audio or video — MP3, WAV, MP4, MOV · Max {MAX_FILE_MB} MB</Typography>
-                <Button variant="outlined" onClick={e => { e.stopPropagation(); loadDemoAudio(); }} disabled={loading} sx={{ borderRadius: '12px', borderColor: `${AC}66`, color: AC, fontWeight: 800 }}>
+                <Typography sx={{ color: '#1a1a1a', fontWeight: 600, fontSize: '0.9375rem', mb: 0.5 }}>
+                  Click or drag file here to upload
+                </Typography>
+                <Typography sx={{ color: '#666', fontSize: '0.8125rem', mb: 2 }}>
+                  Audio & video files, up to {MAX_FILE_MB}MB
+                </Typography>
+                <Button 
+                  variant="outlined" 
+                  onClick={e => { e.stopPropagation(); loadDemoAudio(); }} 
+                  disabled={loading} 
+                  sx={{ 
+                    borderRadius: '8px',
+                    borderColor: '#e8e8e8',
+                    color: '#666',
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    textTransform: 'none',
+                    '&:hover': { borderColor: '#d0d0d0', bgcolor: '#fafafa' }
+                  }}
+                >
                   {loading ? 'Loading…' : 'Try Demo Audio'}
                 </Button>
               </>
@@ -265,10 +319,14 @@ export default function TranscribeComponent() {
               startIcon={isRecording ? <Stop /> : <Mic />}
               onClick={toggleRecording}
               sx={{
-                borderRadius: '12px', textTransform: 'none', fontWeight: 800, px: 3,
+                borderRadius: '8px',
+                textTransform: 'none',
+                fontWeight: 600,
+                fontSize: '0.875rem',
+                px: 3,
                 ...(isRecording
-                  ? { background: 'rgba(239,68,68,0.9)', color: '#fff' }
-                  : { borderColor: AC, color: AC, '&:hover': { background: 'rgba(232,160,32,0.08)' } }),
+                  ? { background: '#ef4444', color: '#fff', '&:hover': { background: '#dc2626' } }
+                  : { borderColor: '#e8e8e8', color: '#666', '&:hover': { background: '#fafafa', borderColor: '#d0d0d0' } }),
               }}
             >
               {isRecording ? 'Stop Recording' : 'Start Recording'}
@@ -305,16 +363,38 @@ export default function TranscribeComponent() {
 
       {successMsg && <Alert severity="success" onClose={() => setSuccessMsg(null)} sx={{ mb: 2, borderRadius: '12px' }}>{successMsg}</Alert>}
 
-      <Box data-tour="studio-mode" sx={{ mb: 2, borderBottom: '1px solid rgba(17,17,17,0.07)' }}>
-        <Tabs value={tab} onChange={handleTabChange} variant={isMobile ? 'fullWidth' : 'standard'} sx={{ minHeight: 40, '& .MuiTabs-indicator': { background: G, height: 2 } }}>
+      <Box data-tour="studio-mode" sx={{ mb: 3, borderBottom: '1px solid #e8e8e8' }}>
+        <Tabs 
+          value={tab} 
+          onChange={handleTabChange} 
+          variant={isMobile ? 'fullWidth' : 'standard'} 
+          sx={{ 
+            minHeight: 48,
+            '& .MuiTabs-indicator': { background: '#1a1a1a', height: 2 } 
+          }}
+        >
           {[
-            { label: 'Upload', icon: <CloudUpload sx={{ fontSize: 17 }} /> },
-            { label: 'Record', icon: <Mic sx={{ fontSize: 17 }} /> },
+            { label: 'Upload', icon: <CloudUpload sx={{ fontSize: 18 }} /> },
+            { label: 'Record', icon: <Mic sx={{ fontSize: 18 }} /> },
           ].map(({ label, icon }, i) => (
-            <Tab key={i} label={!isMobile ? tabLabels[i] : label} icon={icon} iconPosition="start" sx={{
-              textTransform: 'none', fontWeight: 600, fontSize: '0.85rem', minHeight: 40,
-              color: tab === i ? AC : 'rgba(17,17,17,0.4)', '&.Mui-selected': { color: AC },
-            }} />
+            <Tab 
+              key={i} 
+              label={!isMobile ? tabLabels[i] : label} 
+              icon={icon} 
+              iconPosition="start" 
+              sx={{
+                textTransform: 'none',
+                fontWeight: 600,
+                fontSize: '0.875rem',
+                minHeight: 48,
+                py: 2,
+                px: 2.5,
+                color: tab === i ? '#1a1a1a' : '#666',
+                '&.Mui-selected': { color: '#1a1a1a' },
+                '&:hover': { color: '#1a1a1a', bgcolor: 'rgba(0,0,0,0.02)' },
+                '& .MuiTab-iconWrapper': { mr: 1 },
+              }}
+            />
           ))}
         </Tabs>
       </Box>
@@ -387,7 +467,18 @@ export default function TranscribeComponent() {
                 variant="contained" fullWidth startIcon={<AutoAwesome />}
                 onClick={handleSubmit}
                 disabled={loading || !hasContent || isLowBalance}
-                sx={{ background: G, py: 1.5, borderRadius: '12px', fontWeight: 900, boxShadow: '0 4px 20px rgba(232,160,32,0.25)' }}
+                sx={{ 
+                  background: '#1a1a1a',
+                  color: '#ffffff',
+                  py: 1.5,
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  textTransform: 'none',
+                  boxShadow: 'none',
+                  '&:hover': { background: '#333', boxShadow: 'none' },
+                  '&:disabled': { background: '#e8e8e8', color: '#999' }
+                }}
               >
                 {loading ? 'Processing…' : isLowBalance ? 'Insufficient Credits' : 'Start Transcription'}
               </Button>

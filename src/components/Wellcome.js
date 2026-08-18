@@ -21,8 +21,9 @@ const Welcome = () => {
     setIsLoading(true);
     setError('');
     const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
     try {
-      clearStaleAuthSession();
+      await clearStaleAuthSession();
       const result = await signInWithPopup(auth, provider);
       await provisionUserAccount(result.user, { notify: true });
       setIsAuthenticated(true);

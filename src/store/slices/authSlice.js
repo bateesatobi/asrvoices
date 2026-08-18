@@ -47,6 +47,7 @@ const authSlice = createSlice({
       state.user = null;
       state.isAuthenticated = false;
       localStorage.removeItem('user');
+      localStorage.removeItem('loginAt');
     },
     clearError: (state) => {
       state.error = null;

@@ -1,3 +1,4 @@
+import { signOut } from 'firebase/auth';
 import { auth } from '../components/firebaseConfig';
 import { subscriptionAPI } from '../services/api';
 
@@ -92,8 +93,15 @@ export async function provisionStoredUser({ notify = false } = {}) {
   return result;
 }
 
-/** Clear any stale local session before a fresh sign-in. */
-export function clearStaleAuthSession() {
+/** Clear local session and Firebase so the next login can pick a different Google account. */
+export async function clearStaleAuthSession() {
   localStorage.removeItem('user');
   localStorage.removeItem('loginAt');
+  try {
+    if (auth.currentUser) {
+      await signOut(auth);
+    }
+  } catch (_) {
+    /* already signed out */
+  }
 }

@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Avatar, Typography, Button, Container, Divider, Chip, IconButton, Tooltip } from '@mui/material';
 import { Mail, User, Calendar, Settings, LogOut, Star, Edit } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthContext';
 
 const G = 'linear-gradient(135deg, #f59e0b, #d97706)';
 const GOLD = '#f59e0b';
 const GLASS = { background: 'rgba(248, 246, 240, 0.65)', border: '1px solid rgba(232, 160, 32, 0.15)', borderRadius: '16px' };
 
 const ProfileComponent = () => {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -142,7 +146,10 @@ const ProfileComponent = () => {
             Settings
           </Button>
           <Button startIcon={<LogOut size={16} />}
-            onClick={() => { localStorage.removeItem('user'); localStorage.removeItem('loginAt'); window.location.reload(); }}
+            onClick={async () => {
+              await logout();
+              navigate('/get-started');
+            }}
             sx={{
               borderRadius: '50px', px: 2.5, py: 1, fontWeight: 600, fontSize: '0.88rem',
               border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444',

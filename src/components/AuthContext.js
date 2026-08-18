@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './firebaseConfig';
-import { provisionUserAccount, provisionStoredUser } from '../utils/provisionUser';
+import { provisionUserAccount, provisionStoredUser, clearStaleAuthSession } from '../utils/provisionUser';
 
 const AuthContext = createContext();
 
@@ -19,10 +19,9 @@ const isSessionValid = () => {
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(() => isSessionValid());
 
-  const logout = useCallback(() => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('loginAt');
+  const logout = useCallback(async () => {
     setIsAuthenticated(false);
+    await clearStaleAuthSession();
   }, []);
 
   // Check session expiry on mount and every minute

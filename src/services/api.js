@@ -8,7 +8,9 @@ import { parseError, notifyUser } from '../utils/errors';
 import { NEURAL_SPEAKERS } from '../constants/neural_config';
 
 // Base configuration
-export const BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+export const BASE_URL = (
+  process.env.REACT_APP_API_URL || 'https://phosai-backend-api-1.onrender.com'
+).replace(/\/$/, '');
 
 /** API-proxied playback for studio videos (fixes R2 missing Content-Type / CORS). */
 export const studioPlaybackUrl = (kind, docId) =>

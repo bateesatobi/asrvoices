@@ -8,7 +8,7 @@ import {
 } from '@mui/material';
 import {
   InboxOutlined, Search, Delete, Visibility, MoreVert, Share,
-  Refresh, CalendarMonth as CalendarIcon, Download,
+  Refresh, CalendarMonth as CalendarIcon, Download, Replay,
 } from '@mui/icons-material';
 import ReactPaginate from 'react-paginate';
 import './Pagination.css';
@@ -146,6 +146,20 @@ export default function AllActivityFeed({ refreshKey = 0, onMetrics, statusFilte
         }
       }
     }
+    if (action === 'redo' && activeRow) {
+      try {
+        notify('Starting redo…', 'info');
+        const result = await dataAPI.redoJob(activeRow._collection, activeRow.doc_id);
+        const { uid, userId } = getUser();
+        const id = uid || userId;
+        if (id) invalidateVaultCache(id);
+        window.dispatchEvent(new Event('library-updated'));
+        await loadEntries({ force: true, silent: true });
+        notify(result?.message || 'Redo started. A new row will appear shortly.');
+      } catch (err) {
+        notify(err?.response?.data?.detail || err.message || 'Redo failed', 'error');
+      }
+    }
     setAnchor(null);
     setActiveRow(null);
   };
@@ -247,8 +261,7 @@ export default function AllActivityFeed({ refreshKey = 0, onMetrics, statusFilte
               <Typography fontWeight={700} fontSize="0.9rem" mb={0.5} onClick={() => handleView(row)} sx={{ cursor: 'pointer' }}>{row._title}</Typography>
               <Tooltip title={formatFullDate(row._date)}><Typography variant="caption" color="text.secondary">{formatRelativeDate(row._date)}</Typography></Tooltip>
               <Stack direction="row" spacing={0.5} justifyContent="flex-end" mt={1}>
-                <IconButton size="small" onClick={() => handleView(row)}><Visibility sx={{ fontSize: 18, color: AC }} /></IconButton>
-                <IconButton size="small" onClick={e => { setAnchor(e.currentTarget); setActiveRow(row); }}><MoreVert sx={{ fontSize: 18 }} /></IconButton>
+                <IconButton size="small" aria-label="Open actions" onClick={e => { setAnchor(e.currentTarget); setActiveRow(row); }}><MoreVert sx={{ fontSize: 18 }} /></IconButton>
               </Stack>
             </Card>
           ))}
@@ -262,7 +275,7 @@ export default function AllActivityFeed({ refreshKey = 0, onMetrics, statusFilte
                 <TableCell>Title</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Date</TableCell>
-                <TableCell align="right">Actions</TableCell>
+                <TableCell align="right" />
               </TableRow>
             </TableHead>
             <TableBody>
@@ -275,15 +288,9 @@ export default function AllActivityFeed({ refreshKey = 0, onMetrics, statusFilte
                     <Tooltip title={formatFullDate(row._date)}><Typography variant="body2" color="text.secondary">{formatRelativeDate(row._date)}</Typography></Tooltip>
                   </TableCell>
                   <TableCell align="right" onClick={e => e.stopPropagation()}>
-                    <Stack direction="row" justifyContent="flex-end" spacing={0.5}>
-                      {getAssetDownloadUrl(row) && (
-                        <IconButton size="small" component="a" href={getAssetDownloadUrl(row)} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
-                          <Download sx={{ fontSize: 16, color: AC }} />
-                        </IconButton>
-                      )}
-                      <IconButton size="small" onClick={() => handleView(row)}><Visibility sx={{ fontSize: 18, color: AC }} /></IconButton>
-                      <IconButton size="small" onClick={e => { setAnchor(e.currentTarget); setActiveRow(row); }}><MoreVert sx={{ fontSize: 18 }} /></IconButton>
-                    </Stack>
+                    <IconButton size="small" aria-label="Open actions" onClick={e => { setAnchor(e.currentTarget); setActiveRow(row); }}>
+                      <MoreVert sx={{ fontSize: 18, color: 'rgba(17,17,17,0.55)' }} />
+                    </IconButton>
                   </TableCell>
                 </TableRow>
               ))}
@@ -306,8 +313,23 @@ export default function AllActivityFeed({ refreshKey = 0, onMetrics, statusFilte
         </Box>
       )}
 
-      <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}>
+      <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        PaperProps={{ sx: { minWidth: 160, borderRadius: 1.5 } }}
+      >
         <MenuItem onClick={() => handleMenuAction('view')}><ListItemIcon><Visibility fontSize="small" sx={{ color: AC }} /></ListItemIcon> View</MenuItem>
+        {activeRow && getAssetDownloadUrl(activeRow) && (
+          <MenuItem onClick={() => { const url = getAssetDownloadUrl(activeRow); if (url) window.open(url, '_blank'); setAnchor(null); }}>
+            <ListItemIcon><Download fontSize="small" sx={{ color: AC }} /></ListItemIcon> Download
+          </MenuItem>
+        )}
+        {activeRow && !isProcessingStatus(activeRow._status || activeRow.status) && (
+          <MenuItem onClick={() => handleMenuAction('redo')}>
+            <ListItemIcon><Replay fontSize="small" sx={{ color: AC }} /></ListItemIcon>
+            {String(activeRow._status || activeRow.status || '').toLowerCase() === 'failed' ? 'Retry' : 'Redo'}
+          </MenuItem>
+        )}
         <MenuItem onClick={() => handleMenuAction('share')}><ListItemIcon><Share fontSize="small" /></ListItemIcon> Copy link</MenuItem>
         <Divider />
         <MenuItem onClick={() => handleMenuAction('delete')} sx={{ color: '#f43f5e' }}><ListItemIcon><Delete fontSize="small" color="error" /></ListItemIcon> Delete</MenuItem>

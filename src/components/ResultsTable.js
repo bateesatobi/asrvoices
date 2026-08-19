@@ -10,7 +10,7 @@ import {
 import {
   InboxOutlined,
   FileDownload as DownloadIcon, CalendarMonth as CalendarIcon,
-  Search, Delete, Visibility, MoreVert, Share, Refresh,
+  Search, Delete, Visibility, MoreVert, Share, Refresh, Replay,
 } from '@mui/icons-material';
 import ReactPaginate from 'react-paginate';
 import './Pagination.css';
@@ -246,6 +246,29 @@ export default function ResultsTable({
       }
     }
     if (action === 'share' && activeRow) copyShareLink(activeRow);
+    if (action === 'redo' && activeRow) {
+      const coll = activeRow.collection || collectionName;
+      if (!coll) {
+        notify('Cannot redo: missing collection', 'error');
+      } else {
+        try {
+          notify('Starting redo…', 'info');
+          const result = await dataAPI.redoJob(coll, activeRow.doc_id);
+          const { uid, userId } = getUser();
+          const id = uid || userId;
+          if (id) {
+            invalidateVaultCache(id, resolveCacheKey);
+            invalidateVaultCache(id, VAULT_CACHE_KEYS.ALL_ACTIVITY);
+          }
+          window.dispatchEvent(new Event('library-updated'));
+          await fetchData({ force: true, silent: true });
+          notify(result?.message || 'Redo started. A new row will appear shortly.');
+        } catch (err) {
+          const detail = err?.response?.data?.detail || err.message || 'Redo failed';
+          notify(detail, 'error');
+        }
+      }
+    }
     setAnchor(null);
     setActiveRow(null);
   };
@@ -427,9 +450,7 @@ export default function ResultsTable({
                       )}
                     </TableCell>
                   ))}
-                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.72rem', color: 'rgba(17,17,17,0.5)', textTransform: 'uppercase', letterSpacing: '0.04em', width: 120 }}>
-                    Actions
-                  </TableCell>
+                  <TableCell align="right" sx={{ width: 52, px: 1 }} aria-label="Actions" />
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -457,38 +478,19 @@ export default function ResultsTable({
                         {col.render ? col.render(row) : (row[col.id] || '—')}
                       </TableCell>
                     ))}
-                    <TableCell align="right" onClick={e => e.stopPropagation()} sx={{ whiteSpace: 'nowrap' }}>
-                      <Stack direction="row" spacing={0.25} justifyContent="flex-end">
-                        {getAssetDownloadUrl(row) && (
-                          <Tooltip title="Download">
-                            <IconButton
-                              size="small"
-                              component="a"
-                              href={getAssetDownloadUrl(row)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <DownloadIcon sx={{ fontSize: 18, color: AC }} />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                        <Tooltip title="View">
-                          <IconButton size="small" onClick={() => handleView(row.doc_id, row)}>
-                            <Visibility sx={{ fontSize: 18, color: AC }} />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="More">
-                          <IconButton
-                            size="small"
-                            onClick={e => {
-                              setAnchor(e.currentTarget);
-                              setActiveRow(row);
-                            }}
-                          >
-                            <MoreVert sx={{ fontSize: 18 }} />
-                          </IconButton>
-                        </Tooltip>
-                      </Stack>
+                    <TableCell align="right" onClick={e => e.stopPropagation()} sx={{ whiteSpace: 'nowrap', width: 52, px: 0.5 }}>
+                      <Tooltip title="Actions">
+                        <IconButton
+                          size="small"
+                          aria-label="Open actions"
+                          onClick={e => {
+                            setAnchor(e.currentTarget);
+                            setActiveRow(row);
+                          }}
+                        >
+                          <MoreVert sx={{ fontSize: 18, color: 'rgba(17,17,17,0.55)' }} />
+                        </IconButton>
+                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -527,6 +529,12 @@ export default function ResultsTable({
         {activeRow && getAssetDownloadUrl(activeRow) && (
           <MenuItem onClick={() => handleMenuAction('download')} sx={{ fontSize: '0.875rem', py: 1, color: '#111111' }}>
             <ListItemIcon><DownloadIcon fontSize="small" sx={{ color: '#C47F10' }} /></ListItemIcon> Download
+          </MenuItem>
+        )}
+        {activeRow && !isProcessingStatus(activeRow.status) && (
+          <MenuItem onClick={() => handleMenuAction('redo')} sx={{ fontSize: '0.875rem', py: 1, color: '#111111' }}>
+            <ListItemIcon><Replay fontSize="small" sx={{ color: '#C47F10' }} /></ListItemIcon>
+            {String(activeRow.status || '').toLowerCase() === 'failed' ? 'Retry' : 'Redo'}
           </MenuItem>
         )}
         <MenuItem onClick={() => handleMenuAction('share')} sx={{ fontSize: '0.875rem', py: 1, color: '#111111' }}>

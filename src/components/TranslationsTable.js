@@ -47,6 +47,7 @@ export default function TranslationsTable({ refreshKey }) {
       cacheKey={VAULT_CACHE_KEYS.translation}
       columns={columns}
       viewPath={id => `/dashboard/ttdata/${id}`}
+      collectionName="text_store"
       studioPath="/dashboard/translate"
       emptyActionLabel="Open Translation Studio"
       searchFilter={defaultVaultSearch}

@@ -9,7 +9,7 @@ import { NEURAL_SPEAKERS } from '../constants/neural_config';
 
 // Base configuration
 export const BASE_URL = (
-  process.env.REACT_APP_API_URL || 'https://phosai-backend-api-1.onrender.com'
+  process.env.REACT_APP_API_URL || 'https://api.phosaico.com'
 ).replace(/\/$/, '');
 
 /** API-proxied playback for studio videos (fixes R2 missing Content-Type / CORS). */
@@ -1129,7 +1129,20 @@ export const dataAPI = {
       user_id: userId
     });
     return response.data;
-  }
+  },
+
+  redoJob: async (collection, docId) => {
+    const { uid, userId: localId } = JSON.parse(localStorage.getItem('user') || '{}');
+    const userId = uid || localId;
+    if (!userId) throw new Error('User not authenticated');
+
+    const response = await apiClient.post('/api/redo-job', {
+      collection,
+      doc_id: docId,
+      user_id: userId,
+    });
+    return response.data;
+  },
 };
 
 /**

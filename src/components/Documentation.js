@@ -514,7 +514,7 @@ const ParametersSection = ({ parameters }) => {
 };
 
 const generateCodeSnippets = (endpoint) => {
-  const baseUrl = 'https://phosai-backend-api-1.onrender.com';
+  const baseUrl = (process.env.REACT_APP_API_URL || 'https://api.phosaico.com').replace(/\/$/, '');
   const isJson = endpoint.parameters?.type === "application/json";
   const isWs = endpoint.parameters?.type === "websocket";
   const isClone = endpoint.parameters?.type === "multipart/form-data-clone";

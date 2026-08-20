@@ -22,13 +22,13 @@ export const dashboardTour = [
   {
     selector: '[data-tour="quick-actions"]',
     title: 'Start a new project',
-    body: 'Jump straight into any studio — transcribe, translate, synthesize voices, summarize, dub videos, or create voiceovers.',
+    body: 'Four cinematic stories — Transcribe, Speak, Video, and Ads. Click a still or loop to open that studio.',
     placement: 'bottom',
   },
   {
     selector: '[data-tour="stat-balance"]',
     title: 'Your credit balance',
-    body: 'Every job uses credits. This card shows what you have left — click it to top up anytime.',
+    body: 'Every job uses credits. This chip shows what you have left — click it to top up anytime.',
     placement: 'bottom',
   },
   {

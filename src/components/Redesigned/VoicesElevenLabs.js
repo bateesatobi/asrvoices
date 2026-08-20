@@ -5,11 +5,13 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import {
-  Search, Male, Female, RecordVoiceOver, Mic, ArrowForward, GraphicEq,
+  Search, Male, Female, Mic, ArrowForward, GraphicEq,
   PlayArrow, Pause, VolumeUp,
 } from '@mui/icons-material';
 import { NEURAL_LANGUAGES, NEURAL_SPEAKERS } from '../../constants/neural_config';
 import { speakersAPI } from '../../services/api';
+import StudioHeroBanner from '../Layout/StudioHeroBanner';
+import { STUDIO_VISUALS, voiceScene } from '../../data/studioVisuals';
 
 const GOLD = '#E8A020';
 const GOLD_DARK = '#C47F10';
@@ -23,8 +25,8 @@ function VoiceCard({ speaker, preview, isPlaying, onPlay, onUse }) {
     <Paper
       elevation={0}
       sx={{
-        p: 2.5,
         borderRadius: '16px',
+        overflow: 'hidden',
         border: isPlaying ? `2px solid ${GOLD}` : '1px solid rgba(17, 17, 17, 0.06)',
         background: isPlaying ? 'rgba(232, 160, 32, 0.04)' : '#ffffff',
         transition: 'all 0.2s ease',
@@ -37,6 +39,16 @@ function VoiceCard({ speaker, preview, isPlaying, onPlay, onUse }) {
         },
       }}
     >
+      <Box sx={{ height: 88, position: 'relative', bgcolor: '#111' }}>
+        <Box
+          component="img"
+          src={voiceScene(speaker)}
+          alt=""
+          sx={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }}
+        />
+        <Box sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent, rgba(0,0,0,0.35))' }} />
+      </Box>
+      <Box sx={{ p: 2.5, display: 'flex', flexDirection: 'column', flex: 1 }}>
       <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
         <Box sx={{ position: 'relative' }}>
           <Avatar
@@ -156,6 +168,7 @@ function VoiceCard({ speaker, preview, isPlaying, onPlay, onUse }) {
       >
         Use in Text to Speech
       </Button>
+      </Box>
     </Paper>
   );
 }
@@ -255,33 +268,14 @@ export default function VoicesElevenLabs() {
 
   return (
     <Box sx={{ px: { xs: 2, md: 4 }, py: { xs: 2, md: 3 }, maxWidth: 1200, mx: 'auto' }}>
+      <StudioHeroBanner
+        image={STUDIO_VISUALS.voices.image}
+        title="Voices"
+        subtitle={`Browse ${NEURAL_SPEAKERS.length} neural voices${previewCount > 0 ? ` · ${previewCount} with audio previews` : ''}`}
+        height={176}
+      />
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }} sx={{ mb: 3 }}>
-        <Box sx={{ flex: 1 }}>
-          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
-            <Box
-              sx={{
-                width: 44,
-                height: 44,
-                borderRadius: '12px',
-                background: 'rgba(232, 160, 32, 0.12)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <RecordVoiceOver sx={{ color: GOLD_DARK, fontSize: 24 }} />
-            </Box>
-            <Box>
-              <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.5rem', md: '1.75rem' }, color: '#111', letterSpacing: '-0.02em' }}>
-                Voices
-              </Typography>
-              <Typography sx={{ fontSize: '0.9rem', color: '#666' }}>
-                Browse {NEURAL_SPEAKERS.length} neural voices across African languages
-                {previewCount > 0 && ` · ${previewCount} with audio previews`}
-              </Typography>
-            </Box>
-          </Stack>
-        </Box>
+        <Box sx={{ flex: 1 }} />
         <Button
           variant="contained"
           startIcon={<Mic />}

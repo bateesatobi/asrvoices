@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
-import { Box, Typography, IconButton, Collapse, Divider, useTheme } from '@mui/material';
+import { Box, Typography, IconButton, Collapse } from '@mui/material';
 import { ExpandLess, ExpandMore } from '@mui/icons-material';
-
-const GOLD = '#E8A020';
-const GOLD_DARK = '#C47F10';
 
 /**
  * PropertySection - Collapsible section for properties panel
@@ -17,32 +14,27 @@ const GOLD_DARK = '#C47F10';
  */
 export function PropertySection({ title, subtitle, defaultOpen = true, children, action }) {
   const [open, setOpen] = useState(defaultOpen);
-  const theme = useTheme();
 
   return (
     <Box sx={{ borderBottom: '1px solid #f0f0f0' }}>
-      {/* Section Header */}
       <Box
         onClick={() => setOpen(!open)}
         sx={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          px: 3,
-          py: 2.5,
+          px: 1.75,
+          py: 1.15,
           cursor: 'pointer',
           bgcolor: '#ffffff',
-          '&:hover': {
-            bgcolor: '#fafafa',
-          },
-          transition: 'bgcolor 0.15s ease',
+          '&:hover': { bgcolor: '#fafafa' },
         }}
       >
         <Box sx={{ flex: 1 }}>
           <Typography
             sx={{
-              fontSize: '0.875rem',
-              fontWeight: 600,
+              fontSize: '0.75rem',
+              fontWeight: 700,
               color: '#1a1a1a',
               letterSpacing: '-0.01em',
             }}
@@ -81,7 +73,7 @@ export function PropertySection({ title, subtitle, defaultOpen = true, children,
 
       {/* Section Content */}
       <Collapse in={open} unmountOnExit>
-        <Box sx={{ px: 3, py: 2, bgcolor: '#fafafa' }}>
+        <Box sx={{ px: 1.75, py: 1.25, bgcolor: '#fafafa' }}>
           {children}
         </Box>
       </Collapse>
@@ -104,7 +96,7 @@ export function PropertyRow({ label, value, valueColor }) {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        py: 1.5,
+        py: 1,
         borderBottom: '1px solid #f0f0f0',
         '&:last-child': {
           borderBottom: 'none',
@@ -193,8 +185,8 @@ export default function RightPropertiesPanel({ children, title }) {
       {title && (
         <Box
           sx={{
-            px: 3,
-            py: 2.5,
+            px: 1.75,
+            py: 1.25,
             borderBottom: '1px solid #e8e8e8',
             bgcolor: '#ffffff',
           }}

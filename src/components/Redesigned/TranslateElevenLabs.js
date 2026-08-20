@@ -6,8 +6,6 @@ import {
   Alert,
   IconButton,
   Chip,
-  useTheme,
-  useMediaQuery,
 } from '@mui/material';
 import {
   Translate as TranslateIcon,
@@ -46,6 +44,7 @@ import { translationAPI, subscriptionAPI, BASE_URL } from '../../services/api';
 import { LANGUAGES } from '../../constants/languages';
 import useStudioUser from '../../hooks/useStudioUser';
 import { StudioJobProgressBar } from '../progress';
+import { STUDIO_VISUALS } from '../../data/studioVisuals';
 
 const INPUT_TABS = [
   { label: 'Text', icon: <TextFields fontSize="small" /> },
@@ -76,8 +75,6 @@ function fileIcon(name = '') {
 }
 
 export default function TranslateElevenLabs() {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const dispatch = useAppDispatch();
   const { userId, balance, refreshBalance } = useStudioUser();
   const {
@@ -315,7 +312,11 @@ export default function TranslateElevenLabs() {
         title="Translate"
         subtitle={`Convert content from ${sourceLabel} to ${targetLabel}`}
         settingsContent={settingsContent}
-        showPropertiesPanel={!isMobile}
+        hero={{
+          image: STUDIO_VISUALS.translate.image,
+          title: 'Translate',
+          subtitle: `Convert content from ${sourceLabel} to ${targetLabel}`,
+        }}
       >
         <StudioJobProgressBar
           open={busy}

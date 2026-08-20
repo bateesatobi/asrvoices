@@ -10,11 +10,11 @@ import {
   Notes as SummarizeIcon,
   Movie as DubbingIcon,
   GraphicEq as VoiceoverIcon,
+  AutoAwesome,
   AccountBalanceWallet as WalletIcon,
   History as HistoryIcon,
   ArrowForward,
   Bolt,
-  AutoAwesome,
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { subscriptionAPI } from '../../services/api';
@@ -25,6 +25,7 @@ import {
   formatRelativeDate,
   isProcessingStatus,
 } from '../../utils/mediaVault';
+import { HOME_STORIES, TYPE_SCENE } from '../../data/studioVisuals';
 import { useTour } from '../onboarding';
 import { TOUR_IDS, dashboardTour } from '../onboarding/tours';
 import DashboardUsageSummary from './DashboardUsageSummary';
@@ -35,15 +36,6 @@ const GLASS = {
   border: '1px solid rgba(17, 17, 17, 0.05)',
   borderRadius: '20px',
 };
-
-const QUICK_ACTIONS = [
-  { id: 'transcribe', label: 'Transcribe', desc: 'Speech to text', icon: <TranscribeIcon />, path: '/dashboard/transcribe', color: GOLD },
-  { id: 'translate', label: 'Translate', desc: 'Text & documents', icon: <TranslateIcon />, path: '/dashboard/translate', color: '#10b981' },
-  { id: 'synthesize', label: 'Text to Speech', desc: 'Neural voices', icon: <SynthIcon />, path: '/dashboard/synthesize', color: '#C47F10' },
-  { id: 'summarize', label: 'Summarize', desc: 'Condense content', icon: <SummarizeIcon />, path: '/dashboard/summarize', color: '#8b5cf6' },
-  { id: 'dubbing', label: 'Video Dubbing', desc: 'Translate videos', icon: <DubbingIcon />, path: '/dashboard/video-voiceover', color: '#3b82f6' },
-  { id: 'voiceovers', label: 'Voiceovers', desc: 'Narration & slideshow', icon: <VoiceoverIcon />, path: '/dashboard/video-voiceover', color: '#ec4899' },
-];
 
 const TYPE_ICON = {
   transcription: <TranscribeIcon sx={{ fontSize: 18 }} />,
@@ -62,6 +54,64 @@ function greeting() {
   if (h < 12) return 'Good morning';
   if (h < 18) return 'Good afternoon';
   return 'Good evening';
+}
+
+function StoryTile({ story, onOpen }) {
+  const [usePoster, setUsePoster] = useState(!story.video);
+  useEffect(() => {
+    setUsePoster(!story.video);
+  }, [story.video]);
+
+  return (
+    <Box
+      onClick={() => onOpen(story.path)}
+      sx={{
+        cursor: 'pointer',
+        position: 'relative',
+        borderRadius: '18px',
+        overflow: 'hidden',
+        minHeight: { xs: 160, md: 200 },
+        bgcolor: '#111',
+        '&:hover .story-label': { transform: 'translateY(-2px)' },
+      }}
+    >
+      {story.video && !usePoster ? (
+        <Box
+          component="video"
+          src={story.video}
+          poster={story.image}
+          muted
+          loop
+          playsInline
+          autoPlay
+          onError={() => setUsePoster(true)}
+          sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      ) : (
+        <Box
+          component="img"
+          src={story.image}
+          alt=""
+          sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      )}
+      <Box
+        sx={{
+          position: 'absolute',
+          inset: 0,
+          background: 'linear-gradient(180deg, rgba(0,0,0,0.05) 20%, rgba(0,0,0,0.72) 100%)',
+        }}
+      />
+      <Box className="story-label" sx={{ position: 'relative', zIndex: 1, p: 2.25, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', transition: 'transform 0.18s' }}>
+        <Typography sx={{ fontWeight: 800, fontSize: '1.125rem', color: '#fff', letterSpacing: '-0.02em' }}>
+          {story.title}
+        </Typography>
+        <Typography sx={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.8)', mt: 0.35 }}>
+          {story.desc}
+        </Typography>
+      </Box>
+    </Box>
+  );
 }
 
 export default function DashboardHomeElevenLabs({ userId }) {
@@ -121,20 +171,15 @@ export default function DashboardHomeElevenLabs({ userId }) {
 
   const metrics = useMemo(() => computeVaultMetrics(activity), [activity]);
   const recent = useMemo(() => activity.slice(0, 6), [activity]);
-  const totalSpent = useMemo(
-    () => Object.values(analytics).reduce((a, b) => a + b, 0),
-    [analytics]
-  );
-  const hoursSaved = (totalSpent * 0.05).toFixed(1);
 
   if (loading && !activity.length) {
     return (
       <Box>
-        <Skeleton variant="rectangular" height={120} sx={{ borderRadius: 5, mb: 3, bgcolor: 'rgba(17,17,17,0.05)' }} />
+        <Skeleton variant="rectangular" height={72} sx={{ borderRadius: 5, mb: 3, bgcolor: 'rgba(17,17,17,0.05)' }} />
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          {[...Array(6)].map((_, i) => (
-            <Grid item xs={6} md={2} key={i}>
-              <Skeleton variant="rectangular" height={100} sx={{ borderRadius: 4, bgcolor: 'rgba(17,17,17,0.05)' }} />
+          {[...Array(4)].map((_, i) => (
+            <Grid item xs={12} sm={6} md={3} key={i}>
+              <Skeleton variant="rectangular" height={200} sx={{ borderRadius: 4, bgcolor: 'rgba(17,17,17,0.05)' }} />
             </Grid>
           ))}
         </Grid>
@@ -145,36 +190,49 @@ export default function DashboardHomeElevenLabs({ userId }) {
 
   return (
     <Box>
-      {/* Greeting + quick actions */}
-      <Paper sx={{ ...GLASS, p: { xs: 2.5, md: 3 }, mb: 3, position: 'relative', overflow: 'hidden' }}>
-        <Box
-          sx={{
-            position: 'absolute',
-            top: -60,
-            right: -40,
-            width: 220,
-            height: 220,
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(232,160,32,0.12), transparent 70%)',
-            pointerEvents: 'none',
-          }}
-        />
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 2.5 }}>
-          <Box>
-            <Typography
-              sx={{
-                fontSize: { xs: '1.35rem', md: '1.75rem' },
-                fontWeight: 700,
-                color: '#1a1a1a',
-                letterSpacing: '-0.02em',
-              }}
-            >
-              {greeting()}{userName ? `, ${userName}` : ''}
-            </Typography>
-            <Typography sx={{ fontSize: '0.875rem', color: '#666', mt: 0.5 }}>
-              What would you like to create today?
-            </Typography>
-          </Box>
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="flex-start"
+        spacing={2}
+        sx={{ mb: 2.5 }}
+      >
+        <Box>
+          <Typography
+            sx={{
+              fontSize: { xs: '1.35rem', md: '1.75rem' },
+              fontWeight: 700,
+              color: '#1a1a1a',
+              letterSpacing: '-0.02em',
+            }}
+          >
+            {greeting()}{userName ? `, ${userName}` : ''}
+          </Typography>
+          <Typography sx={{ fontSize: '0.875rem', color: '#666', mt: 0.5 }}>
+            Pick a story, or continue recent work.
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Chip
+            data-tour="stat-balance"
+            icon={<WalletIcon sx={{ fontSize: '16px !important', color: `${GOLD} !important` }} />}
+            label={`${Number(balance).toLocaleString()} credits`}
+            onClick={() => navigate('/dashboard/subscription')}
+            sx={{
+              fontWeight: 700,
+              bgcolor: 'rgba(232,160,32,0.1)',
+              color: '#1a1a1a',
+              cursor: 'pointer',
+              '& .MuiChip-label': { px: 0.5 },
+            }}
+          />
+          <Chip
+            data-tour="stat-progress"
+            icon={<Bolt sx={{ fontSize: '16px !important' }} />}
+            label={`${metrics.processing} in progress`}
+            onClick={() => navigate('/dashboard/usage')}
+            sx={{ fontWeight: 700, bgcolor: 'rgba(245,158,11,0.12)', color: '#d97706', cursor: 'pointer' }}
+          />
           <IconButton
             onClick={() => loadAll({ force: true })}
             disabled={refreshing}
@@ -187,94 +245,16 @@ export default function DashboardHomeElevenLabs({ userId }) {
             />
           </IconButton>
         </Stack>
+      </Stack>
 
-        <Grid data-tour="quick-actions" container spacing={1.5}>
-          {QUICK_ACTIONS.map((action) => (
-            <Grid item xs={6} sm={4} md={2} key={action.id}>
-              <Box
-                onClick={() => navigate(action.path)}
-                sx={{
-                  cursor: 'pointer',
-                  p: 2,
-                  borderRadius: '14px',
-                  height: '100%',
-                  bgcolor: '#fff',
-                  border: '1px solid #e8e8e8',
-                  transition: 'all 0.18s',
-                  '&:hover': {
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 8px 20px rgba(0,0,0,0.06)',
-                    borderColor: `${action.color}55`,
-                  },
-                }}
-              >
-                <Avatar
-                  variant="rounded"
-                  sx={{
-                    width: 36,
-                    height: 36,
-                    mb: 1,
-                    bgcolor: `${action.color}14`,
-                    color: action.color,
-                    borderRadius: '10px',
-                  }}
-                >
-                  {action.icon}
-                </Avatar>
-                <Typography sx={{ fontWeight: 700, fontSize: '0.8125rem', color: '#1a1a1a' }}>
-                  {action.label}
-                </Typography>
-                <Typography sx={{ fontSize: '0.6875rem', color: '#999', mt: 0.25 }}>
-                  {action.desc}
-                </Typography>
-              </Box>
-            </Grid>
-          ))}
-        </Grid>
-      </Paper>
-
-      {/* Stats */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        {[
-          { label: 'Credit Balance', value: balance.toLocaleString(), icon: <WalletIcon />, color: GOLD, tour: 'stat-balance', action: () => navigate('/dashboard/subscription') },
-          { label: 'Total Assets', value: metrics.total, icon: <HistoryIcon />, color: '#3b82f6', action: () => navigate('/dashboard/usage') },
-          { label: 'In Progress', value: metrics.processing, icon: <Bolt />, color: '#f59e0b', tour: 'stat-progress', action: () => navigate('/dashboard/usage') },
-          { label: 'Hours Saved', value: `${hoursSaved}h`, icon: <AutoAwesome />, color: '#10b981', action: () => navigate('/dashboard/usage') },
-        ].map((stat) => (
-          <Grid item xs={6} md={3} key={stat.label}>
-            <Paper
-              data-tour={stat.tour}
-              onClick={stat.action}
-              sx={{
-                ...GLASS,
-                p: 2,
-                cursor: 'pointer',
-                transition: 'all 0.18s',
-                '&:hover': { transform: 'translateY(-2px)', borderColor: `${stat.color}40` },
-              }}
-            >
-              <Stack direction="row" spacing={1.5} alignItems="center">
-                <Avatar
-                  variant="rounded"
-                  sx={{ width: 38, height: 38, bgcolor: `${stat.color}14`, color: stat.color, borderRadius: '10px' }}
-                >
-                  {stat.icon}
-                </Avatar>
-                <Box>
-                  <Typography sx={{ fontSize: '1.25rem', fontWeight: 800, color: '#1a1a1a', lineHeight: 1 }}>
-                    {stat.value}
-                  </Typography>
-                  <Typography sx={{ fontSize: '0.6875rem', color: '#999', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, mt: 0.4 }}>
-                    {stat.label}
-                  </Typography>
-                </Box>
-              </Stack>
-            </Paper>
+      <Grid data-tour="quick-actions" container spacing={1.5} sx={{ mb: 3 }}>
+        {HOME_STORIES.map((story) => (
+          <Grid item xs={12} sm={6} md={3} key={story.id}>
+            <StoryTile story={story} onOpen={navigate} />
           </Grid>
         ))}
       </Grid>
 
-      {/* Recent activity + usage */}
       <Grid container spacing={3}>
         <Grid item xs={12} md={7}>
           <Paper data-tour="recent-projects" sx={{ ...GLASS, p: 0, overflow: 'hidden', height: '100%' }}>
@@ -286,9 +266,14 @@ export default function DashboardHomeElevenLabs({ userId }) {
             >
               <Stack direction="row" spacing={1.25} alignItems="center">
                 <HistoryIcon sx={{ color: GOLD, fontSize: 20 }} />
-                <Typography sx={{ fontWeight: 700, color: '#1a1a1a', fontSize: '0.9375rem' }}>
-                  Recent activity
-                </Typography>
+                <Box>
+                  <Typography sx={{ fontWeight: 700, color: '#1a1a1a', fontSize: '0.9375rem' }}>
+                    Recent activity
+                  </Typography>
+                  <Typography sx={{ fontSize: '0.6875rem', color: '#999' }}>
+                    {metrics.total} asset{metrics.total === 1 ? '' : 's'} in your library
+                  </Typography>
+                </Box>
               </Stack>
               <Button
                 size="small"
@@ -302,10 +287,9 @@ export default function DashboardHomeElevenLabs({ userId }) {
 
             {recent.length === 0 ? (
               <Box sx={{ p: 5, textAlign: 'center' }}>
-                <AutoAwesome sx={{ fontSize: 40, color: 'rgba(17,17,17,0.12)', mb: 1.5 }} />
                 <Typography sx={{ fontWeight: 700, color: '#1a1a1a', mb: 0.5 }}>No projects yet</Typography>
                 <Typography sx={{ fontSize: '0.8125rem', color: '#999', mb: 2 }}>
-                  Start with one of the studios above — your work will appear here.
+                  Open a story above — finished jobs show up here with a thumbnail.
                 </Typography>
                 <Button
                   variant="contained"
@@ -317,7 +301,7 @@ export default function DashboardHomeElevenLabs({ userId }) {
                     textTransform: 'none',
                   }}
                 >
-                  Start creating
+                  Start transcribing
                 </Button>
               </Box>
             ) : (
@@ -325,6 +309,7 @@ export default function DashboardHomeElevenLabs({ userId }) {
                 {recent.map((row, i) => {
                   const processing = isProcessingStatus(row._status);
                   const clickable = !!row._viewPath;
+                  const thumb = TYPE_SCENE[row._vaultType];
                   return (
                     <Stack
                       key={row.doc_id || i}
@@ -339,18 +324,34 @@ export default function DashboardHomeElevenLabs({ userId }) {
                         '&:hover': { bgcolor: clickable ? 'rgba(232,160,32,0.04)' : 'transparent' },
                       }}
                     >
-                      <Avatar
-                        variant="rounded"
+                      <Box
                         sx={{
-                          width: 34,
-                          height: 34,
+                          width: 48,
+                          height: 48,
+                          borderRadius: '12px',
+                          overflow: 'hidden',
+                          flexShrink: 0,
                           bgcolor: `${row._vaultColor || GOLD}14`,
-                          color: row._vaultColor || GOLD,
-                          borderRadius: '10px',
+                          position: 'relative',
                         }}
                       >
-                        {TYPE_ICON[row._vaultType] || <AutoAwesome sx={{ fontSize: 18 }} />}
-                      </Avatar>
+                        {thumb ? (
+                          <Box component="img" src={thumb} alt="" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <Avatar
+                            variant="rounded"
+                            sx={{
+                              width: 48,
+                              height: 48,
+                              bgcolor: `${row._vaultColor || GOLD}14`,
+                              color: row._vaultColor || GOLD,
+                              borderRadius: '12px',
+                            }}
+                          >
+                            {TYPE_ICON[row._vaultType] || <AutoAwesome sx={{ fontSize: 18 }} />}
+                          </Avatar>
+                        )}
+                      </Box>
                       <Box sx={{ flex: 1, minWidth: 0 }}>
                         <Typography
                           sx={{

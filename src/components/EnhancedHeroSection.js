@@ -7,6 +7,7 @@ import {
   M_AC, M_BLACK, M_GRADIENT, M_BORDER, M_SURFACE, M_TEXT_MUTED,
   mBtnPrimary, mBtnSecondary,
 } from './marketing/marketingTokens';
+import { HOME_STORIES } from '../data/studioVisuals';
 
 const fadeUp = keyframes`
   from { opacity: 0; transform: translateY(16px); }
@@ -84,6 +85,19 @@ function HeroProductCard() {
         boxShadow: '0 24px 64px rgba(17, 17, 17, 0.08)',
       }}
     >
+      <Box sx={{ position: 'relative', height: 160, bgcolor: '#111' }}>
+        <Box
+          component="video"
+          src={HOME_STORIES[2].video}
+          poster={HOME_STORIES[0].image}
+          muted
+          loop
+          playsInline
+          autoPlay
+          sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+        <Box sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent, rgba(0,0,0,0.45))' }} />
+      </Box>
       <Box sx={{ px: 2.5, py: 1.5, borderBottom: `1px solid ${M_BORDER}`, display: 'flex', alignItems: 'center', gap: 1 }}>
         <Box sx={{ display: 'flex', gap: 0.6 }}>
           {['#E8A020', 'rgba(17,17,17,0.15)', 'rgba(17,17,17,0.15)'].map((c, i) => (

@@ -1,6 +1,7 @@
 import React from 'react';
-import { Box, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import { StudioLayout, RightPropertiesPanel } from '../ElevenLabsUI';
+import StudioHeroBanner from './StudioHeroBanner';
 
 const centerSx = (maxWidth) => ({
   display: 'flex',
@@ -20,6 +21,8 @@ export default function StudioPageShell({
   icon,
   title,
   subtitle,
+  hero = null,
+  hideHeader = false,
   children,
   footer,
   settingsContent,
@@ -28,13 +31,11 @@ export default function StudioPageShell({
   maxWidth = 920,
   'data-tour': dataTour,
 }) {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const propertiesPanel =
-    showPropertiesPanel && !isMobile && settingsContent ? (
+    showPropertiesPanel && settingsContent ? (
       <RightPropertiesPanel>
-        <Box sx={{ flex: 1, overflowY: 'auto' }}>{settingsContent}</Box>
+        {settingsContent}
       </RightPropertiesPanel>
     ) : null;
 
@@ -45,6 +46,18 @@ export default function StudioPageShell({
       bottomBar={bottomBar}
     >
       <Box data-tour={dataTour} sx={centerSx(maxWidth)}>
+        {hero?.image && (
+          <StudioHeroBanner
+            image={hero.image}
+            video={hero.video}
+            title={hero.title ?? title}
+            subtitle={hero.subtitle ?? subtitle}
+            height={hero.height ?? (hero.children ? 280 : 188)}
+          >
+            {hero.children}
+          </StudioHeroBanner>
+        )}
+        {!hideHeader && !hero?.image && (
         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, mb: subtitle ? 2 : 3 }}>
           {icon && (
             <Box sx={{ color: '#1a1a1a', display: 'flex', mt: 0.25 }}>{icon}</Box>
@@ -67,6 +80,7 @@ export default function StudioPageShell({
             )}
           </Box>
         </Box>
+        )}
 
         <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>{children}</Box>
 

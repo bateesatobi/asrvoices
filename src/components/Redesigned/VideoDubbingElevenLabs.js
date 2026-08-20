@@ -8,10 +8,8 @@ import {
   Stepper,
   Step,
   StepLabel,
-  useTheme,
-  useMediaQuery,
 } from '@mui/material';
-import { VideoLibrary, CloudUpload, Translate, Edit, RecordVoiceOver } from '@mui/icons-material';
+import { VideoLibrary, Translate, Edit, RecordVoiceOver } from '@mui/icons-material';
 import {
   ElevenLabsButton,
   ElevenLabsFileUpload,
@@ -24,6 +22,7 @@ import {
 } from '../ElevenLabsUI';
 import StudioPageShell from '../Layout/StudioPageShell';
 import StudioHistorySection from '../Layout/StudioHistorySection';
+import { STUDIO_VISUALS } from '../../data/studioVisuals';
 import { videoAPI, translationAPI, getFriendlyErrorMessage, BASE_URL, studioPlaybackUrl } from '../../services/api';
 import { NEURAL_LANGUAGES, NEURAL_SPEAKERS } from '../../constants/neural_config';
 import useStudioUser from '../../hooks/useStudioUser';
@@ -58,8 +57,6 @@ const normalizeSegments = (raw) =>
     }));
 
 export default function VideoDubbingElevenLabs({ userId: userIdProp }) {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { userId: hookUserId, balance } = useStudioUser();
   const userId = userIdProp || hookUserId;
 
@@ -483,7 +480,34 @@ export default function VideoDubbingElevenLabs({ userId: userIdProp }) {
         subtitle="Transcribe → edit → translate → generate voice → export dubbed video"
         maxWidth={1040}
         settingsContent={settingsContent}
-        showPropertiesPanel={!isMobile}
+        hideHeader={!videoFile}
+        hero={
+          videoFile
+            ? null
+            : {
+                image: STUDIO_VISUALS.video.image,
+                video: STUDIO_VISUALS.video.video,
+                title: 'Video dubbing',
+                subtitle: 'Drop a clip on the loop — then transcribe, translate, and mux.',
+                height: 280,
+                children: (
+                  <Box sx={{ mt: 2, borderRadius: '14px', bgcolor: 'rgba(255,255,255,0.94)', p: { xs: 2, md: 2.5 }, textAlign: 'center' }}>
+                    <Typography sx={{ fontWeight: 600, mb: 1.5, color: '#1a1a1a' }}>Upload your video</Typography>
+                    <ElevenLabsFileUpload
+                      onFileSelect={handleVideoSelect}
+                      selectedFile={videoFile}
+                      onClearFile={() => {
+                        if (videoUrl) URL.revokeObjectURL(videoUrl);
+                        setVideoFile(null);
+                        setVideoUrl(null);
+                        setSegments([]);
+                      }}
+                      accept="video/*"
+                    />
+                  </Box>
+                ),
+              }
+        }
       >
         <StudioJobProgressBar
           open={busy}
@@ -513,31 +537,7 @@ export default function VideoDubbingElevenLabs({ userId: userIdProp }) {
             </Typography>
           </Box>
         )}
-        {!videoFile ? (
-          <Box
-            sx={{
-              border: '2px dashed #e8e8e8',
-              borderRadius: '16px',
-              bgcolor: '#fafafa',
-              p: { xs: 3, md: 5 },
-              textAlign: 'center',
-            }}
-          >
-            <CloudUpload sx={{ fontSize: 32, color: '#E8A020', mb: 1 }} />
-            <Typography sx={{ fontWeight: 600, mb: 2 }}>Upload your video</Typography>
-            <ElevenLabsFileUpload
-              onFileSelect={handleVideoSelect}
-              selectedFile={videoFile}
-              onClearFile={() => {
-                if (videoUrl) URL.revokeObjectURL(videoUrl);
-                setVideoFile(null);
-                setVideoUrl(null);
-                setSegments([]);
-              }}
-              accept="video/*"
-            />
-          </Box>
-        ) : (
+        {!videoFile ? null : (
           <Box
             sx={{
               borderRadius: '12px',
@@ -571,15 +571,14 @@ export default function VideoDubbingElevenLabs({ userId: userIdProp }) {
               <Edit sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'text-bottom' }} />
               Step 3 — Edit transcript & translation ({segments.length} segments)
             </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, maxHeight: 420, overflowY: 'auto' }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', maxHeight: 420, overflowY: 'auto' }}>
               {segments.map((seg, i) => (
                 <Box
                   key={i}
                   sx={{
-                    border: '1px solid #e8e8e8',
-                    borderRadius: '10px',
-                    p: 2,
-                    bgcolor: '#fff',
+                    py: 2,
+                    borderBottom: '1px solid #ececec',
+                    '&:last-child': { borderBottom: 'none' },
                   }}
                 >
                   <Typography sx={{ fontSize: '0.75rem', color: '#999', mb: 1 }}>

@@ -32,6 +32,8 @@ import CreditEstimateChip from '../CreditEstimateChip';
 import { dataAPI } from '../../services/api';
 import { NEURAL_LANGUAGES, NEURAL_SPEAKERS } from '../../constants/neural_config';
 import { LANGUAGES } from '../../constants/languages';
+import StudioHeroBanner from '../Layout/StudioHeroBanner';
+import { STUDIO_VISUALS } from '../../data/studioVisuals';
 
 const GOLD = '#E8A020';
 const GOLD_DARK = '#C47F10';
@@ -536,110 +538,91 @@ export default function VideoVoiceoverCombined({ userId }) {
       showPropertiesPanel={showProperties}
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 3 }}>
-        {/* Header */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Box>
-            <Typography sx={{ fontSize: '1.5rem', fontWeight: 600, color: '#1a1a1a', letterSpacing: '-0.02em' }}>
-              Video & Voiceover Studio
-            </Typography>
-            <Typography sx={{ fontSize: '0.875rem', color: '#666666', mt: 0.5 }}>
-              Dub videos and create AI-powered voiceovers
-            </Typography>
-          </Box>
-          <CreditEstimateChip />
-        </Box>
+        <StudioHeroBanner
+          image={STUDIO_VISUALS.video.image}
+          video={currentVideo ? undefined : STUDIO_VISUALS.video.video}
+          title="Video & Voiceover"
+          subtitle="Dub and narrate on a player and timeline — not a stack of empty cards"
+          height={mainTab === 0 && !currentVideo ? 300 : 176}
+        >
+          {mainTab === 0 && !currentVideo && (
+            <Box sx={{ mt: 2, borderRadius: '14px', bgcolor: 'rgba(255,255,255,0.94)', overflow: 'hidden' }}>
+              <ElevenLabsTabs value={dubbingInputTab} onChange={(_, v) => setDubbingInputTab(v)} tabs={dubbingInputTabs} />
+              <Box sx={{ p: 2 }}>
+                {dubbingInputTab === 0 ? (
+                  <ElevenLabsFileUpload
+                    onFileSelect={(file) => setUploadedFile(file)}
+                    selectedFile={uploadedFile}
+                    onClearFile={() => setUploadedFile(null)}
+                    accept="video/*"
+                  />
+                ) : (
+                  <ElevenLabsTextField
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    value={youtubeUrl}
+                    onChange={(e) => setYoutubeUrl(e.target.value)}
+                    fullWidth
+                  />
+                )}
+                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 2 }}>
+                  <CreditEstimateChip />
+                  <ElevenLabsButton
+                    variant="contained"
+                    onClick={handleDubbing}
+                    disabled={isProcessing || (!uploadedFile && !youtubeUrl)}
+                    loading={isProcessing}
+                    startIcon={<AutoAwesomeIcon />}
+                  >
+                    Start dubbing
+                  </ElevenLabsButton>
+                </Stack>
+              </Box>
+            </Box>
+          )}
+        </StudioHeroBanner>
 
-        {/* Main Tabs */}
-        <ElevenLabsTabs value={mainTab} onChange={(_, v) => setMainTab(v)} tabs={mainTabs} />
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <ElevenLabsTabs value={mainTab} onChange={(_, v) => setMainTab(v)} tabs={mainTabs} />
+          {!(mainTab === 0 && !currentVideo) && <CreditEstimateChip />}
+        </Stack>
 
         {/* Video Dubbing Tab */}
         {mainTab === 0 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
-            {!currentVideo && (
-              <ElevenLabsCard>
-                <ElevenLabsTabs value={dubbingInputTab} onChange={(_, v) => setDubbingInputTab(v)} tabs={dubbingInputTabs} />
-                <Box sx={{ p: 3 }}>
-                  {dubbingInputTab === 0 ? (
-                    <ElevenLabsFileUpload
-                      onFileSelect={(file) => setUploadedFile(file)}
-                      selectedFile={uploadedFile}
-                      onClearFile={() => setUploadedFile(null)}
-                      accept="video/*"
-                    />
-                  ) : (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <Typography sx={{ fontSize: '0.875rem', color: '#666666' }}>
-                        Enter YouTube URL to dub:
-                      </Typography>
-                      <ElevenLabsTextField
-                        placeholder="https://www.youtube.com/watch?v=..."
-                        value={youtubeUrl}
-                        onChange={(e) => setYoutubeUrl(e.target.value)}
-                        fullWidth
-                      />
-                    </Box>
-                  )}
-                </Box>
-                <Box sx={{ p: 3, borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography sx={{ fontSize: '0.75rem', color: '#999999' }}>
-                    {dubbingInputTab === 0 ? (uploadedFile ? uploadedFile.name : 'No file') : (youtubeUrl ? 'URL entered' : 'No URL')}
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button size="small" onClick={handleClearDubbing} sx={{ color: '#666666' }}>
-                      Clear
-                    </Button>
-                    <ElevenLabsButton
-                      variant="contained"
-                      onClick={handleDubbing}
-                      disabled={isProcessing || (!uploadedFile && !youtubeUrl)}
-                      loading={isProcessing}
-                      startIcon={<AutoAwesomeIcon />}
-                    >
-                      Start Dubbing
-                    </ElevenLabsButton>
-                  </Box>
-                </Box>
-              </ElevenLabsCard>
-            )}
-
             {currentVideo && (
               <Grid container spacing={3}>
                 <Grid item xs={12} md={8}>
-                  <ElevenLabsCard title="Video Preview">
+                  <Box sx={{ borderRadius: '16px', overflow: 'hidden', bgcolor: '#111' }}>
                     <VideoPreviewPanel
                       videoUrl={currentVideo.output_url || currentVideo.video_url}
                       poster={currentVideo.thumbnail}
                       onTimeUpdate={(time) => console.log('Time:', time)}
                       onPlayStateChange={(playing) => console.log('Playing:', playing)}
                     />
-                  </ElevenLabsCard>
+                  </Box>
                 </Grid>
                 <Grid item xs={12} md={4}>
-                  <ElevenLabsCard title="Dubbing Info">
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <PropertyRow label="Status" value={currentVideo.status} />
-                      <PropertyRow label="Segments" value={currentVideo.segments?.length || 0} />
-                      <PropertyRow label="Source Language" value={currentVideo.source_lang} />
-                      <PropertyRow label="Target Languages" value={currentVideo.target_langs?.join(', ') || 'N/A'} />
-                      <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-                        <ElevenLabsButton variant="outlined" fullWidth startIcon={<DownloadIcon />}>
-                          Download
-                        </ElevenLabsButton>
-                        <ElevenLabsButton variant="text" onClick={handleClearDubbing}>
-                          New Dubbing
-                        </ElevenLabsButton>
-                      </Box>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <PropertyRow label="Status" value={currentVideo.status} />
+                    <PropertyRow label="Segments" value={currentVideo.segments?.length || 0} />
+                    <PropertyRow label="Source Language" value={currentVideo.source_lang} />
+                    <PropertyRow label="Target Languages" value={currentVideo.target_langs?.join(', ') || 'N/A'} />
+                    <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
+                      <ElevenLabsButton variant="outlined" fullWidth startIcon={<DownloadIcon />}>
+                        Download
+                      </ElevenLabsButton>
+                      <ElevenLabsButton variant="text" onClick={handleClearDubbing}>
+                        New Dubbing
+                      </ElevenLabsButton>
                     </Box>
-                  </ElevenLabsCard>
+                  </Box>
                 </Grid>
                 <Grid item xs={12}>
-                  <ElevenLabsCard title="Timeline">
-                    <TimelineEditor
-                      audioUrl={currentVideo.audio_url}
-                      showAddSegment={false}
-                      onTimeUpdate={(time) => console.log('Timeline time:', time)}
-                    />
-                  </ElevenLabsCard>
+                  <TimelineEditor
+                    audioUrl={currentVideo.audio_url}
+                    showAddSegment={false}
+                    onTimeUpdate={(time) => console.log('Timeline time:', time)}
+                  />
                 </Grid>
               </Grid>
             )}

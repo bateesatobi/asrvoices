@@ -16,6 +16,7 @@ import {
   RecordVoiceOver as SynthIcon, Timeline as TimelineIcon,
   InterpreterMode as DubbingIcon, Mic, Mic as VoiceoverIcon,
   GridView as HomeIcon, Star as StarIcon, LibraryMusic as MusicIcon,
+  AutoAwesome as CreativeIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../AuthContext';
 import mvetlogo from '../../assets/livestock.png';
@@ -127,6 +128,7 @@ const MENU = [
       { label: 'Text to Speech', icon: <SynthIcon fontSize="small" />, path: '/dashboard/synthesize' },
       { label: 'Summarize', icon: <SummarizeIcon fontSize="small" />, path: '/dashboard/summarize' },
       { label: 'Video & Voiceover', icon: <DubbingIcon fontSize="small" />, path: '/dashboard/video-voiceover', badge: 'New', badgeColor: 'primary' },
+      { label: 'Ad Creative', icon: <CreativeIcon fontSize="small" />, path: '/dashboard/ad-creative', badge: 'New', badgeColor: 'primary' },
       // { label: 'Voice Cloning', icon: <Mic fontSize="small" />, path: '/dashboard/voice-cloning', badge: 'New', badgeColor: 'primary' },
     ],
   },

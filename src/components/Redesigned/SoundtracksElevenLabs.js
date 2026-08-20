@@ -9,6 +9,8 @@ import {
   Movie, RecordVoiceOver,
 } from '@mui/icons-material';
 import { soundtracksAPI, BASE_URL } from '../../services/api';
+import StudioHeroBanner from '../Layout/StudioHeroBanner';
+import { STUDIO_VISUALS, soundtrackCover } from '../../data/studioVisuals';
 
 const GOLD = '#E8A020';
 const GOLD_DARK = '#C47F10';
@@ -50,8 +52,8 @@ function TrackCard({ track, isPlaying, onPlay, onUse }) {
     <Paper
       elevation={0}
       sx={{
-        p: 2.5,
         borderRadius: '16px',
+        overflow: 'hidden',
         border: isPlaying ? `2px solid ${GOLD}` : '1px solid rgba(17, 17, 17, 0.06)',
         background: isPlaying ? 'rgba(232, 160, 32, 0.04)' : '#ffffff',
         height: '100%',
@@ -61,6 +63,11 @@ function TrackCard({ track, isPlaying, onPlay, onUse }) {
         '&:hover': { borderColor: 'rgba(232, 160, 32, 0.35)', boxShadow: '0 8px 24px rgba(17,17,17,0.06)' },
       }}
     >
+      <Box sx={{ height: 120, position: 'relative', bgcolor: '#111' }}>
+        <Box component="img" src={soundtrackCover(track)} alt="" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <Box sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.45))' }} />
+      </Box>
+      <Box sx={{ p: 2.5, display: 'flex', flexDirection: 'column', flex: 1 }}>
       <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mb: 1.5 }}>
         <Box
           sx={{
@@ -132,6 +139,7 @@ function TrackCard({ track, isPlaying, onPlay, onUse }) {
       >
         Use in voiceover
       </Button>
+      </Box>
     </Paper>
   );
 }
@@ -199,22 +207,14 @@ export default function SoundtracksElevenLabs() {
 
   return (
     <Box sx={{ px: { xs: 2, md: 4 }, py: { xs: 2, md: 3 }, maxWidth: 1200, mx: 'auto' }}>
+      <StudioHeroBanner
+        image={STUDIO_VISUALS.soundtracks.image}
+        title="Soundtracks"
+        subtitle={`${tracks.length} royalty-free background tracks for voiceovers and video`}
+        height={176}
+      />
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }} sx={{ mb: 3 }}>
-        <Box sx={{ flex: 1 }}>
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <Box sx={{ width: 44, height: 44, borderRadius: '12px', bgcolor: 'rgba(232,160,32,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <GraphicEq sx={{ color: GOLD_DARK, fontSize: 24 }} />
-            </Box>
-            <Box>
-              <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.5rem', md: '1.75rem' }, color: '#111' }}>
-                Soundtracks
-              </Typography>
-              <Typography sx={{ fontSize: '0.9rem', color: '#666' }}>
-                {tracks.length} royalty-free background tracks for voiceovers, slideshows &amp; videos
-              </Typography>
-            </Box>
-          </Stack>
-        </Box>
+        <Box sx={{ flex: 1 }} />
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" startIcon={<RecordVoiceOver />} onClick={() => navigate('/dashboard/video-voiceover')} sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '12px' }}>
             Voiceover studio

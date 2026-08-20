@@ -7,6 +7,7 @@ export const STUDIO_ROUTE_SEGMENTS = new Set([
   'voice-cloning',
   'video-voiceover',
   'voiceovers',
+  'ad-creative',
 ]);
 
 export const TOP_BAR_HEIGHT = 64;

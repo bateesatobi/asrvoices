@@ -7,11 +7,7 @@ import {
   MenuItem,
   FormControl,
   FormControlLabel,
-  Switch,
-  Divider,
 } from '@mui/material';
-
-const GOLD = '#E8A020';
 
 /**
  * ElevenLabs-style settings panel component
@@ -19,8 +15,8 @@ const GOLD = '#E8A020';
  */
 export function SettingSlider({ label, value, onChange, min = 0, max = 100, step = 1, marks }) {
   return (
-    <Box sx={{ mb: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+    <Box sx={{ mb: 1.75 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
         <Typography sx={{ fontSize: '0.8125rem', fontWeight: 600, color: '#1a1a1a' }}>
           {label}
         </Typography>
@@ -45,8 +41,8 @@ export function SettingSlider({ label, value, onChange, min = 0, max = 100, step
             opacity: 1,
           },
           '& .MuiSlider-thumb': {
-            width: 18,
-            height: 18,
+            width: 14,
+            height: 14,
             bgcolor: '#1a1a1a',
             border: '2px solid #ffffff',
             boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
@@ -65,18 +61,20 @@ export function SettingSlider({ label, value, onChange, min = 0, max = 100, step
 
 export function SettingSelect({ label, value, onChange, options }) {
   return (
-    <Box sx={{ mb: 3 }}>
-      <Typography sx={{ fontSize: '0.8125rem', fontWeight: 600, color: '#1a1a1a', mb: 1.5 }}>
+    <Box sx={{ mb: 1.75 }}>
+      <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#555', mb: 0.75 }}>
         {label}
       </Typography>
       <FormControl fullWidth>
         <Select
+          size="small"
           value={value}
           onChange={onChange}
           sx={{
             bgcolor: '#fafafa',
             borderRadius: '8px',
-            fontSize: '0.875rem',
+            fontSize: '0.8125rem',
+            '& .MuiSelect-select': { py: 1 },
             '& .MuiOutlinedInput-notchedOutline': {
               borderColor: '#e8e8e8',
             },
@@ -101,7 +99,7 @@ export function SettingSelect({ label, value, onChange, options }) {
 
 export function SettingToggle({ label, checked, onChange, description }) {
   return (
-    <Box sx={{ mb: 3 }}>
+    <Box sx={{ mb: 1.5 }}>
       <FormControlLabel
         control={
           <Switch
@@ -140,15 +138,15 @@ export function SettingToggle({ label, checked, onChange, description }) {
 
 export function SettingSection({ title, children }) {
   return (
-    <Box sx={{ mb: 3 }}>
+    <Box sx={{ mb: 2 }}>
       <Typography
         sx={{
-          fontSize: '0.75rem',
-          fontWeight: 700,
+          fontSize: '0.6875rem',
+          fontWeight: 800,
           textTransform: 'uppercase',
           letterSpacing: '0.08em',
           color: '#999',
-          mb: 2,
+          mb: 1.25,
         }}
       >
         {title}
@@ -163,9 +161,9 @@ export default function ElevenLabsSettingsPanel({ children, sx = {} }) {
     <Box
       sx={{
         bgcolor: '#ffffff',
-        border: '1px solid #e8e8e8',
-        borderRadius: '12px',
-        p: 3,
+        border: 'none',
+        borderRadius: 0,
+        p: 1.75,
         ...sx,
       }}
     >

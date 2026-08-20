@@ -15,15 +15,7 @@ export default function VideoVoiceoverElevenLabs({ userId, initialTab = 0 }) {
 
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      <Box
-        sx={{
-          px: { xs: 2, md: 4 },
-          pt: 1,
-          bgcolor: '#FAFAFA',
-          borderBottom: '1px solid #f0f0f0',
-          flexShrink: 0,
-        }}
-      >
+      <Box sx={{ px: { xs: 2, md: 4 }, pt: 1, flexShrink: 0 }}>
         <ElevenLabsTabs value={mainTab} onChange={(_, v) => setMainTab(v)} tabs={MAIN_TABS} />
       </Box>
       <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>

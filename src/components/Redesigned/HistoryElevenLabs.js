@@ -1,17 +1,11 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import {
-  Box, Typography, Grid, IconButton, Tooltip, Chip, Stack,
-  useMediaQuery, useTheme, Button,
-} from '@mui/material';
+import { Box, Typography, Chip, Stack } from '@mui/material';
 import {
   Mic, VideoCameraBack, TextFields, VolumeUp, RecordVoiceOver, Summarize,
   Dashboard, Refresh, Description, GraphicEq,
 } from '@mui/icons-material';
-import {
-  ElevenLabsCard,
-  ElevenLabsButton,
-} from '../ElevenLabsUI';
+import { ElevenLabsButton } from '../ElevenLabsUI';
 import DataTable from '../DataTable.js';
 import VideoTable from '../VideoTable';
 import TranslationsTable from '../TranslationsTable';
@@ -44,16 +38,13 @@ const FEATURES = [
   { id: 'summary', Icon: Summarize, label: 'Summarization', color: GOLD_DARK, Component: SummaryTable },
 ];
 
-const STAT_CARDS = [
-  { key: 'total', label: 'Total Assets', filter: { view: 'all' } },
-  { key: 'processing', label: 'In Progress', filter: { view: 'all', status: 'processing' } },
-  { key: 'thisWeek', label: 'This Week', filter: { view: 'all' } },
-  { key: 'types', label: 'Asset Types', filter: null },
+const STAT_CHIPS = [
+  { key: 'total', label: 'assets', filter: { view: 'all' } },
+  { key: 'processing', label: 'in progress', filter: { view: 'all', status: 'processing' } },
+  { key: 'thisWeek', label: 'this week', filter: { view: 'all' } },
 ];
 
 export default function HistoryElevenLabs() {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [searchParams, setSearchParams] = useSearchParams();
 
   const viewParam = searchParams.get('view') || 'all';
@@ -123,118 +114,70 @@ export default function HistoryElevenLabs() {
     total: metrics.total.toLocaleString('en-US'),
     processing: metrics.processing.toLocaleString('en-US'),
     thisWeek: metrics.thisWeek.toLocaleString('en-US'),
-    types: Object.keys(metrics.byType).length.toString(),
   }), [metrics]);
 
   const ActiveComponent = selected.Component;
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 3 }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: { xs: 'flex-start', md: 'center' }, justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5 }}>
         <Box>
           <Typography sx={{ fontSize: '1.5rem', fontWeight: 600, color: '#1a1a1a', letterSpacing: '-0.02em' }}>
             History
           </Typography>
           <Typography sx={{ fontSize: '0.875rem', color: '#666666', mt: 0.5 }}>
-            View all your past projects and activities
+            One table per studio — not a stack of cards
           </Typography>
         </Box>
-        <ElevenLabsButton
-          variant="outlined"
-          onClick={refreshLibrary}
-          startIcon={<Refresh />}
-        >
-          Refresh
-        </ElevenLabsButton>
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+          {STAT_CHIPS.map(({ key, label, filter }) => (
+            <Chip
+              key={key}
+              label={`${metricsLoading ? '…' : statValues[key]} ${label}`}
+              onClick={() => filter && setView(filter.view, { status: filter.status })}
+              sx={{ fontWeight: 700, bgcolor: 'rgba(232,160,32,0.1)', color: '#1a1a1a' }}
+            />
+          ))}
+          <ElevenLabsButton variant="outlined" onClick={refreshLibrary} startIcon={<Refresh />}>
+            Refresh
+          </ElevenLabsButton>
+        </Stack>
       </Box>
 
-      {/* Stat Cards */}
-      <Grid container spacing={2}>
-        {STAT_CARDS.map(({ key, label, filter }) => (
-          <Grid item xs={6} md={3} key={key}>
-            <ElevenLabsCard
-              onClick={() => filter && setView(filter.view, { status: filter.status })}
+      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+        {FEATURES.map((feat, i) => {
+          const count = feat.id === 'all' ? metrics.total : (metrics.byType[feat.id] ?? null);
+          return (
+            <Chip
+              key={feat.id}
+              icon={<feat.Icon sx={{ fontSize: 16 }} />}
+              label={count != null ? `${feat.label} (${count})` : feat.label}
+              onClick={() => setView(feat.id)}
               sx={{
-                cursor: filter ? 'pointer' : 'default',
-                transition: 'all 0.2s ease',
-                '&:hover': filter ? { transform: 'translateY(-2px)' } : {},
+                height: 32,
+                fontWeight: 600,
+                fontSize: '0.8125rem',
+                bgcolor: selectedIndex === i ? 'rgba(232,160,32,0.1)' : 'transparent',
+                color: selectedIndex === i ? GOLD_DARK : '#666666',
+                border: selectedIndex === i ? '1px solid rgba(232,160,32,0.25)' : '1px solid transparent',
+                cursor: 'pointer',
               }}
-            >
-              <Typography sx={{ fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: GOLD_DARK, mb: 1 }}>
-                {label}
-              </Typography>
-              {metricsLoading && key !== 'types' ? (
-                <Typography sx={{ fontSize: '1.5rem', fontWeight: 600, color: '#999999' }}>
-                  ...
-                </Typography>
-              ) : (
-                <Typography sx={{ fontSize: '1.75rem', fontWeight: 700, color: '#1a1a1a', lineHeight: 1 }}>
-                  {statValues[key]}
-                </Typography>
-              )}
-            </ElevenLabsCard>
-          </Grid>
-        ))}
-      </Grid>
-
-      {/* Main Content */}
-      <ElevenLabsCard sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* Service Filter Tabs */}
-        <Box sx={{ borderBottom: '1px solid #e8e8e8', px: 3, py: 2 }}>
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', overflowX: 'auto' }}>
-            {FEATURES.map((feat, i) => {
-              const count = feat.id === 'all' ? metrics.total : (metrics.byType[feat.id] ?? null);
-              return (
-                <Chip
-                  key={feat.id}
-                  icon={<feat.Icon sx={{ fontSize: 16 }} />}
-                  label={count != null ? `${feat.label} (${count})` : feat.label}
-                  onClick={() => setView(feat.id)}
-                  sx={{
-                    height: 32,
-                    fontWeight: 600,
-                    fontSize: '0.8125rem',
-                    bgcolor: selectedIndex === i ? 'rgba(232,160,32,0.1)' : '#f5f5f5',
-                    color: selectedIndex === i ? GOLD_DARK : '#666666',
-                    border: selectedIndex === i ? `1px solid rgba(232,160,32,0.2)` : '1px solid #e8e8e8',
-                    cursor: 'pointer',
-                    '&:hover': {
-                      bgcolor: selectedIndex === i ? 'rgba(232,160,32,0.15)' : '#e8e8e8',
-                    },
-                  }}
-                />
-              );
-            })}
-          </Box>
-        </Box>
-
-        {/* Content Area */}
-        <Box sx={{ flex: 1, overflowY: 'auto', p: 3 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Box>
-              <Typography sx={{ fontSize: '1.125rem', fontWeight: 600, color: '#1a1a1a' }}>
-                {selected.label}
-              </Typography>
-              <Typography sx={{ fontSize: '0.875rem', color: '#666666', mt: 0.5 }}>
-                {selected.id === 'all'
-                  ? 'Chronological view across every studio'
-                  : `Browsing your saved ${selected.label.toLowerCase()}`}
-              </Typography>
-            </Box>
-          </Box>
-
-          {selected.isFeed ? (
-            <AllActivityFeed
-              refreshKey={refreshKey}
-              onMetrics={handleMetrics}
-              statusFilter={statusParam !== 'all' ? statusParam : undefined}
             />
-          ) : (
-            <ActiveComponent refreshKey={refreshKey} />
-          )}
-        </Box>
-      </ElevenLabsCard>
+          );
+        })}
+      </Box>
+
+      <Box sx={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+        {selected.isFeed ? (
+          <AllActivityFeed
+            refreshKey={refreshKey}
+            onMetrics={handleMetrics}
+            statusFilter={statusParam !== 'all' ? statusParam : undefined}
+          />
+        ) : (
+          <ActiveComponent refreshKey={refreshKey} />
+        )}
+      </Box>
     </Box>
   );
 }

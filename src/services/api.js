@@ -9,7 +9,7 @@ import { NEURAL_SPEAKERS } from '../constants/neural_config';
 
 // Base configuration
 export const BASE_URL = (
-  process.env.REACT_APP_API_URL || 'https://api.phosaico.com'
+  process.env.REACT_APP_API_URL || 'https://phosai-backend-api-latest.onrender.com'
 ).replace(/\/$/, '');
 
 /** API-proxied playback for studio videos (fixes R2 missing Content-Type / CORS). */

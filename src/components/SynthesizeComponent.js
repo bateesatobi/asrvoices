@@ -7,8 +7,6 @@ import {
   Alert,
   Chip,
   IconButton,
-  useMediaQuery,
-  useTheme,
 } from '@mui/material';
 import {
   VolumeUp,
@@ -25,6 +23,7 @@ import { NEURAL_SPEAKERS, NEURAL_LANGUAGES } from '../constants/neural_config';
 import useStudioUser from '../hooks/useStudioUser';
 import StudioPageShell from './Layout/StudioPageShell';
 import StudioHistorySection from './Layout/StudioHistorySection';
+import { STUDIO_VISUALS } from '../data/studioVisuals';
 import SoundtrackPickerSection, { useSoundtrackPicker } from './Redesigned/SoundtrackPickerSection';
 import {
   ElevenLabsButton,
@@ -67,8 +66,6 @@ function fileIcon(name = '') {
 }
 
 export default function SynthesizeComponent() {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const location = useLocation();
   const { userId, balance, refreshBalance } = useStudioUser();
 
@@ -304,7 +301,13 @@ export default function SynthesizeComponent() {
             : 'Upload a document and convert it to natural speech'
         }
         settingsContent={settingsContent}
-        showPropertiesPanel={!isMobile}
+        hero={{
+          image: STUDIO_VISUALS.tts.image,
+          title: 'Text to Speech',
+          subtitle: isTextMode
+            ? 'Type or paste text and generate lifelike speech'
+            : 'Upload a document and convert it to natural speech',
+        }}
         bottomBar={
           <StudioPlayerBar
             voiceName={selectedSpeaker.name}

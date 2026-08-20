@@ -3,8 +3,6 @@ import {
   Typography,
   TextField,
   Alert,
-  useTheme,
-  useMediaQuery,
   Box,
 } from '@mui/material';
 import {
@@ -26,6 +24,7 @@ import { summarizationAPI, getFriendlyErrorMessage } from '../../services/api';
 import { LANGUAGES } from '../../constants/languages';
 import useStudioUser from '../../hooks/useStudioUser';
 import { StudioJobProgressBar } from '../progress';
+import { STUDIO_VISUALS } from '../../data/studioVisuals';
 
 const INPUT_MODES = [
   { label: 'Text', accept: '' },
@@ -63,8 +62,6 @@ function extractSummaryText(result) {
 }
 
 export default function SummarizeElevenLabs() {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { userId, balance, refreshBalance } = useStudioUser();
 
   const [inputMode, setInputMode] = useState(0);
@@ -177,7 +174,11 @@ export default function SummarizeElevenLabs() {
         title="Summarize"
         subtitle="Condense text, documents, audio, or video into a clear summary"
         settingsContent={settingsContent}
-        showPropertiesPanel={!isMobile}
+        hero={{
+          image: STUDIO_VISUALS.summarize.image,
+          title: 'Summarize',
+          subtitle: 'Long form in — a short brief out',
+        }}
       >
         <StudioJobProgressBar open={isProcessing} message="Summarizing…" submessage="Analyzing your content" />
         <Box sx={{ mb: 2 }}>

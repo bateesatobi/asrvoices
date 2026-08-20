@@ -8,7 +8,6 @@ import {
   useMediaQuery, useTheme, Divider,
 } from '@mui/material';
 import {
-  InboxOutlined,
   FileDownload as DownloadIcon, CalendarMonth as CalendarIcon,
   Search, Delete, Visibility, MoreVert, Share, Refresh, Replay,
 } from '@mui/icons-material';
@@ -17,7 +16,7 @@ import './Pagination.css';
 import Skeleton from '@mui/material/Skeleton';
 import { dataAPI } from '../services/api';
 import {
-  AC, G, isProcessingStatus, getEntryDate, getAssetDownloadUrl, defaultVaultSearch, resolveRowTitle,
+  AC, isProcessingStatus, getEntryDate, getAssetDownloadUrl, defaultVaultSearch, resolveRowTitle,
 } from '../utils/mediaVault';
 import {
   fetchVaultCached, readVaultCacheSync, invalidateVaultCache, VAULT_CACHE_KEYS,
@@ -275,7 +274,6 @@ export default function ResultsTable({
 
   return (
     <Box sx={{ width: '100%' }}>
-      <Box sx={{ width: '100%', p: { xs: 1.5, md: 2.5 }, borderRadius: '20px', background: 'rgba(17, 17, 17,0.03)', border: '1px solid rgba(17, 17, 17,0.07)' }}>
         {/* Toolbar */}
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', sm: 'center' }} sx={{ mb: 2.5 }}>
           <TextField
@@ -390,36 +388,17 @@ export default function ResultsTable({
             ))}
           </Box>
         ) : filtered.length === 0 ? (
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 8, px: 2, textAlign: 'center' }}>
-            <Box sx={{ width: 64, height: 64, borderRadius: '50%', bgcolor: 'rgba(17, 17, 17,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
-              <InboxOutlined sx={{ fontSize: 32, color: 'text.disabled' }} />
-            </Box>
-            <Typography variant="subtitle1" fontWeight={600} mb={0.5}>{filter ? 'No results' : emptyTitle}</Typography>
-            <Typography variant="body2" color="text.secondary" mb={2.5}>{filter ? `No results for "${filter}"` : emptySubtitle}</Typography>
-            {!filter && studioPath && (
-              <Button variant="contained" onClick={() => navigate(studioPath)} sx={{ background: G, fontWeight: 800, borderRadius: '12px', textTransform: 'none' }}>
-                {emptyActionLabel}
-              </Button>
-            )}
+          <Box sx={{ py: 4, px: 0.5 }}>
+            <Typography sx={{ fontWeight: 600, fontSize: '0.875rem', color: '#1a1a1a' }}>
+              {filter ? 'No matching rows' : emptyTitle}
+            </Typography>
+            <Typography sx={{ fontSize: '0.8125rem', color: '#888', mt: 0.5 }}>
+              {filter ? `Nothing matches “${filter}”.` : emptySubtitle}
+            </Typography>
           </Box>
         ) : (
         <Box sx={{ opacity: refreshing ? 0.92 : 1, transition: 'opacity 0.15s ease' }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5, px: 0.5 }}>
-            <Typography sx={{ fontSize: '0.78rem', color: 'rgba(17,17,17,0.45)', fontWeight: 700 }}>
-              {filtered.length} {filtered.length === 1 ? 'item' : 'items'}
-            </Typography>
-            {!isMobile && (
-              <Button
-                size="small"
-                variant="text"
-                onClick={() => setSelected(selected.length === filtered.length ? [] : filtered.map(r => r.doc_id))}
-                sx={{ textTransform: 'none', fontWeight: 700 }}
-              >
-                {selected.length === filtered.length ? 'Clear selection' : 'Select all'}
-              </Button>
-            )}
-          </Stack>
-          <TableContainer sx={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid rgba(17,17,17,0.06)' }}>
+          <TableContainer sx={{ overflowX: 'auto' }}>
             <Table size="small" sx={{ minWidth: isMobile ? 640 : 720 }}>
               <TableHead>
                 <TableRow sx={{ bgcolor: 'rgba(17,17,17,0.03)' }}>
@@ -517,7 +496,6 @@ export default function ResultsTable({
             />
           </Box>
         )}
-      </Box>
 
       <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}

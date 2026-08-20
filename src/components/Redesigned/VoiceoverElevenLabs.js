@@ -8,8 +8,6 @@ import {
   Stepper,
   Step,
   StepLabel,
-  useTheme,
-  useMediaQuery,
 } from '@mui/material';
 import {
   RecordVoiceOver,
@@ -17,7 +15,6 @@ import {
   Delete,
   Image as ImageIcon,
   VideoLibrary,
-  CloudUpload,
 } from '@mui/icons-material';
 import {
   ElevenLabsButton,
@@ -33,6 +30,7 @@ import {
 } from '../ElevenLabsUI';
 import StudioPageShell from '../Layout/StudioPageShell';
 import StudioHistorySection from '../Layout/StudioHistorySection';
+import { STUDIO_VISUALS } from '../../data/studioVisuals';
 import { ttsAPI, videoAPI, getFriendlyErrorMessage, BASE_URL } from '../../services/api';
 import { NEURAL_LANGUAGES, NEURAL_SPEAKERS } from '../../constants/neural_config';
 import useStudioUser from '../../hooks/useStudioUser';
@@ -67,8 +65,6 @@ const newBlock = (lang, voice) => ({
 });
 
 export default function VoiceoverElevenLabs({ userId: userIdProp }) {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { userId: hookUserId, balance, refreshBalance } = useStudioUser();
   const userId = userIdProp || hookUserId;
   const soundtrack = useSoundtrackPicker();
@@ -487,7 +483,31 @@ export default function VoiceoverElevenLabs({ userId: userIdProp }) {
         }
         maxWidth={1040}
         settingsContent={settingsContent}
-        showPropertiesPanel={!isMobile}
+        hideHeader={mode === 0 && workflowStep < 2 && !videoFile}
+        hero={{
+          image: STUDIO_VISUALS.voiceover.image,
+          title: 'Voiceover',
+          subtitle:
+            mode === 0
+              ? 'Optional clip on the still, then a script list — not a stack of cards'
+              : 'Stills become slides; narration is a list under the header',
+          height: mode === 0 && workflowStep < 2 && !videoFile ? 280 : 176,
+          children:
+            mode === 0 && workflowStep < 2 && !videoFile ? (
+              <Box sx={{ mt: 2, borderRadius: '14px', bgcolor: 'rgba(255,255,255,0.94)', p: { xs: 2, md: 2.5 }, textAlign: 'center' }}>
+                <Typography sx={{ fontWeight: 600, mb: 0.5 }}>Upload video (optional)</Typography>
+                <Typography sx={{ fontSize: '0.8125rem', color: '#888', mb: 1.5 }}>
+                  Skip for audio-only. You write the narration — no transcription.
+                </Typography>
+                <ElevenLabsFileUpload
+                  onFileSelect={handleVideoSelect}
+                  selectedFile={videoFile}
+                  onClearFile={clearVideo}
+                  accept="video/*"
+                />
+              </Box>
+            ) : null,
+        }}
         bottomBar={
           <StudioPlayerBar
             voiceName={speaker.name}
@@ -543,56 +563,29 @@ export default function VoiceoverElevenLabs({ userId: userIdProp }) {
           </Typography>
         </Box>
 
-        {mode === 0 && workflowStep < 2 && (
-          <Box
-            sx={{
-              border: videoFile ? '1px solid #e8e8e8' : '2px dashed #e8e8e8',
-              borderRadius: '16px',
-              bgcolor: '#fafafa',
-              p: { xs: 3, md: 4 },
-              mb: 3,
-              textAlign: videoFile ? 'left' : 'center',
-            }}
-          >
-            {!videoFile ? (
-              <>
-                <CloudUpload sx={{ fontSize: 32, color: '#E8A020', mb: 1 }} />
-                <Typography sx={{ fontWeight: 600, mb: 1 }}>Upload video (optional)</Typography>
-                <Typography sx={{ fontSize: '0.8125rem', color: '#888', mb: 2 }}>
-                  No transcription — you write the narration. Skip this step for audio-only output.
-                </Typography>
-                <ElevenLabsFileUpload
-                  onFileSelect={handleVideoSelect}
-                  selectedFile={videoFile}
-                  onClearFile={clearVideo}
-                  accept="video/*"
-                />
-              </>
-            ) : (
-              <Box>
-                <Typography sx={{ fontSize: '0.8125rem', fontWeight: 600, color: '#666', mb: 1 }}>
-                  Source video · {videoFile.name}
-                </Typography>
-                <Box
-                  sx={{
-                    borderRadius: '12px',
-                    overflow: 'hidden',
-                    bgcolor: '#000',
-                    aspectRatio: '16/9',
-                    maxHeight: 280,
-                  }}
-                >
-                  <video
-                    src={videoUrl}
-                    controls
-                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                  />
-                </Box>
-                <ElevenLabsButton variant="text" size="small" onClick={clearVideo} sx={{ mt: 1 }}>
-                  Remove video
-                </ElevenLabsButton>
-              </Box>
-            )}
+        {mode === 0 && workflowStep < 2 && videoFile && (
+          <Box sx={{ mb: 3 }}>
+            <Typography sx={{ fontSize: '0.8125rem', fontWeight: 600, color: '#666', mb: 1 }}>
+              Source video · {videoFile.name}
+            </Typography>
+            <Box
+              sx={{
+                borderRadius: '12px',
+                overflow: 'hidden',
+                bgcolor: '#000',
+                aspectRatio: '16/9',
+                maxHeight: 280,
+              }}
+            >
+              <video
+                src={videoUrl}
+                controls
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              />
+            </Box>
+            <ElevenLabsButton variant="text" size="small" onClick={clearVideo} sx={{ mt: 1 }}>
+              Remove video
+            </ElevenLabsButton>
           </Box>
         )}
 
@@ -688,21 +681,19 @@ export default function VoiceoverElevenLabs({ userId: userIdProp }) {
           </Box>
         )}
 
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Typography sx={{ fontSize: '0.8125rem', fontWeight: 600, color: '#666', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        <Box>
+          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em', mb: 0.5 }}>
             {mode === 1 ? 'Narration per slide' : 'Narration script'}
           </Typography>
           {blocks.map((block, index) => (
             <Box
               key={block.id}
               sx={{
-                border: '1px solid #e8e8e8',
-                borderRadius: '12px',
-                p: 2,
-                bgcolor: '#fff',
+                py: 2,
+                borderBottom: '1px solid #ececec',
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
                 <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#999' }}>
                   Block {index + 1}
                   {mode === 1 && imageFiles[index] ? ` · ${imageFiles[index].name}` : ''}

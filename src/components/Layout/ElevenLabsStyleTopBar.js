@@ -69,6 +69,7 @@ export default function ElevenLabsStyleTopBar({ isMobile, toggleDrawer }) {
     soundtracks: 'Soundtracks',
     transcribe: 'Speech to text',
     'video-transcribe': 'Video Transcribe',
+    'ad-creative': 'Ad Creative',
     translate: 'Translate',
     synthesize: 'Text to Speech',
     'voice-clone': 'Voice Cloning',

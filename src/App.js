@@ -41,6 +41,7 @@ import GlobalSnackbar from "./components/GlobalSnackbar";
 import GlobalProgressIndicator from "./components/GlobalProgressIndicator";
 import BackgroundJobWatcher from "./components/BackgroundJobWatcher";
 import DubbingView from "./views/DubbingView";
+import AdCreativeView from "./views/AdCreativeView";
 import VoiceoverView from "./views/VoiceoverView";
 import DashboardHomeView from "./views/DashboardHomeView";
 import VoicesView from "./views/VoicesView";
@@ -104,6 +105,7 @@ function App() {
             <Route path="contact-support" element={<ErrorBoundary><ContactSupport /></ErrorBoundary>} />
             <Route path="voice-cloning" element={<ErrorBoundary><VoiceCloning /></ErrorBoundary>} />
             <Route path="video-voiceover" element={<ErrorBoundary><DubbingView /></ErrorBoundary>} />
+            <Route path="ad-creative" element={<ErrorBoundary><AdCreativeView /></ErrorBoundary>} />
           </Route>
         </Routes>
         <GlobalProgressIndicator />

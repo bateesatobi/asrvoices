@@ -136,6 +136,14 @@ export const STUDIO_FEATURES = [
     langCodes: NEURAL_LANG_CODES,
     badge: 'New',
   },
+  {
+    id: 'ad_creative',
+    label: 'Ad Creative',
+    path: '/dashboard/ad-creative',
+    description: 'Fashion, app, and product ad templates with voice and language.',
+    langCodes: ALL_LANG_CODES,
+    badge: 'New',
+  },
 ];
 
 export const COMING_SOON_LANGUAGES = [

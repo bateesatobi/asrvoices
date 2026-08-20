@@ -3,14 +3,13 @@ import { Box, Typography, Button, Container, Grid, Chip } from '@mui/material';
 import { Link } from 'react-router-dom';
 import { keyframes } from '@mui/material/styles';
 import {
-  Translate, Mic, RecordVoiceOver, GraphicEq,
-  Summarize, Chat, Code, ArrowForward, CheckCircle,
-  MovieCreation, RecordVoiceOverOutlined, ContentCopy,
+  Chat, ArrowForward, CheckCircle,
 } from '@mui/icons-material';
 import {
-  M_AC, M_AC_DARK, M_GRADIENT, M_BLACK, M_BORDER, M_SURFACE, M_TEXT_MUTED,
-  mBtnPrimary, mCard, mSectionLabel, mHeadline,
+  M_AC, M_GRADIENT, M_BLACK, M_BORDER, M_SURFACE, M_TEXT_MUTED,
+  mSectionLabel, mHeadline,
 } from './marketing/marketingTokens';
+import { HOME_STORIES } from '../data/studioVisuals';
 
 const slideUp = keyframes`
   from { opacity: 0; transform: translateY(24px); }
@@ -18,70 +17,6 @@ const slideUp = keyframes`
 `;
 
 const G = M_GRADIENT;
-
-// ── Feature grid data ──────────────────────────────────────────────────────
-const FEATURES = [
-  {
-    icon: <Translate sx={{ fontSize: 28 }} />,
-    title: 'Translate',
-    desc: 'Text and document translation with streaming progress and multi-target languages.',
-    color: '#E8A020', glow: 'rgba(232, 160, 32,0.2)',
-  },
-  {
-    icon: <Mic sx={{ fontSize: 28 }} />,
-    title: 'Transcribe',
-    desc: 'Voice recognition and video transcription with SRT, JSON, and plain-text exports.',
-    color: '#C47F10', glow: 'rgba(232, 160, 32,0.2)',
-  },
-  {
-    icon: <RecordVoiceOver sx={{ fontSize: 28 }} />,
-    title: 'Synthesize',
-    desc: 'Neural text-to-speech and document speech with African speaker personas.',
-    color: M_AC_DARK, glow: 'rgba(232, 160, 32, 0.15)',
-  },
-  {
-    icon: <ContentCopy sx={{ fontSize: 28 }} />,
-    title: 'Voice Cloning',
-    desc: 'Clone a speaker from a short reference clip and generate new scripts in their voice.',
-    color: M_AC, glow: 'rgba(232, 160, 32, 0.15)',
-  },
-  {
-    icon: <Summarize sx={{ fontSize: 28 }} />,
-    title: 'Summarize',
-    desc: 'Condense text, documents, audio, and video into executive summaries.',
-    color: M_AC_DARK, glow: 'rgba(196, 127, 16, 0.15)',
-  },
-  {
-    icon: <MovieCreation sx={{ fontSize: 28 }} />,
-    title: 'Video Dubbing',
-    desc: 'Segment-level dubbing with neural voices, timing control, and burned-in captions.',
-    color: '#E8A020', glow: 'rgba(232, 160, 32,0.2)',
-  },
-  {
-    icon: <RecordVoiceOverOutlined sx={{ fontSize: 28 }} />,
-    title: 'Voiceovers',
-    desc: 'Block-based narration for videos and slideshows with batch rendering.',
-    color: '#C47F10', glow: 'rgba(232, 160, 32,0.2)',
-  },
-  {
-    icon: <GraphicEq sx={{ fontSize: 28 }} />,
-    title: 'Voice to Voice',
-    desc: 'Translate spoken audio while preserving speaker character across languages.',
-    color: M_AC, glow: 'rgba(232, 160, 32, 0.15)',
-  },
-  {
-    icon: <Chat sx={{ fontSize: 28 }} />,
-    title: 'AI Agents',
-    desc: 'Conversational assistants fluent in Luganda, Swahili, Hausa, Yoruba, and more.',
-    color: '#C47F10', glow: 'rgba(232, 160, 32,0.2)',
-  },
-  {
-    icon: <Code sx={{ fontSize: 28 }} />,
-    title: 'Developer API',
-    desc: 'REST reference, credit-based billing, and background jobs for production apps.',
-    color: '#E8A020', glow: 'rgba(232, 160, 32,0.2)',
-  },
-];
 
 // ── Showcase sections ──────────────────────────────────────────────────────
 const SHOWCASES = [
@@ -120,25 +55,6 @@ const SHOWCASES = [
   },
 ];
 
-// ── Feature card ───────────────────────────────────────────────────────────
-function FeatureCard({ icon, title, desc }) {
-  return (
-    <Box sx={{ ...mCard, p: 3, cursor: 'default', height: '100%' }}>
-      <Box sx={{
-        width: 48, height: 48, borderRadius: '12px',
-        bgcolor: 'rgba(232, 160, 32, 0.08)',
-        border: '1px solid rgba(232, 160, 32, 0.15)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        mb: 2, color: M_AC,
-      }}>
-        {icon}
-      </Box>
-      <Typography sx={{ color: M_BLACK, fontWeight: 700, fontSize: '1rem', mb: 1 }}>{title}</Typography>
-      <Typography sx={{ color: M_TEXT_MUTED, fontSize: '0.9rem', lineHeight: 1.65 }}>{desc}</Typography>
-    </Box>
-  );
-}
-
 // ── Visual panels ──────────────────────────────────────────────────────────
 const waveBar = keyframes`
   0%,100% { transform: scaleY(0.4); }
@@ -152,7 +68,10 @@ const typingCursor = keyframes`
 function WaveformPanel({ accent }) {
   const bars = [0.4, 0.7, 1, 0.6, 0.9, 0.5, 0.8, 1, 0.45, 0.7, 0.95, 0.6, 0.75, 0.5, 0.85, 0.7, 0.92, 0.6];
   return (
-    <Box sx={{ p: { xs: 4, md: 6 }, background: `${accent}08`, border: `1px solid ${accent}20`, borderRadius: '28px', minHeight: 300, display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+    <Box sx={{ borderRadius: '28px', minHeight: 300, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', position: 'relative', overflow: 'hidden' }}>
+      <Box component="img" src={HOME_STORIES[0].image} alt="" sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+      <Box sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.7))' }} />
+      <Box sx={{ position: 'relative', zIndex: 1, p: { xs: 3, md: 4 } }}>
       {/* Live indicator */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 4 }}>
         <Box sx={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981' }} />
@@ -163,7 +82,7 @@ function WaveformPanel({ accent }) {
           <Box key={i} sx={{ width: 5, borderRadius: 2, height: `${h * 48}px`, background: `linear-gradient(180deg, ${accent}, ${accent}66)`, animation: `${waveBar} ${0.8 + i * 0.07}s ease-in-out infinite`, animationDelay: `${i * 0.06}s` }} />
         ))}
       </Box>
-      <Box sx={{ background: 'rgba(17, 17, 17,0.04)', border: '1px solid rgba(17, 17, 17,0.07)', borderRadius: '14px', p: 2.5 }}>
+      <Box sx={{ background: 'rgba(255,255,255,0.94)', borderRadius: '14px', p: 2.5 }}>
         <Typography sx={{ color: '#475569', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', mb: 1 }}>Detected • Luganda → English</Typography>
         <Typography sx={{ color: '#111111', fontSize: '0.95rem', fontWeight: 500, lineHeight: 1.7 }}>
           "Oli otya?" →{' '}
@@ -175,6 +94,7 @@ function WaveformPanel({ accent }) {
           <Chip label="< 280ms" size="small" sx={{ background: 'rgba(17, 17, 17,0.04)', color: '#64748b', border: '1px solid rgba(17, 17, 17, 0.08)', borderRadius: '50px', fontSize: '0.7rem', fontWeight: 600 }} />
         </Box>
       </Box>
+    </Box>
     </Box>
   );
 }
@@ -317,47 +237,57 @@ export default function ServiceSections() {
               </Box>
             </Typography>
             <Typography sx={{ color: M_TEXT_MUTED, fontSize: { xs: '1rem', md: '1.0625rem' }, maxWidth: 520, mx: 'auto' }}>
-              From real-time transcription to multi-language chatbots — built for Africa, ready for the world.
+              Transcribe, speak, video, and ads — four stories, not a wall of icon tiles.
             </Typography>
           </Box>
 
-          <Grid container spacing={3}>
-            {FEATURES.map(f => (
-              <Grid item xs={12} sm={6} md={4} lg={3} key={f.title}>
-                <FeatureCard icon={f.icon} title={f.title} desc={f.desc} />
+          <Grid container spacing={2}>
+            {HOME_STORIES.map((story) => (
+              <Grid item xs={12} sm={6} md={3} key={story.id}>
+                <Box
+                  component={Link}
+                  to={story.publicPath}
+                  sx={{
+                    display: 'block',
+                    textDecoration: 'none',
+                    position: 'relative',
+                    borderRadius: '20px',
+                    overflow: 'hidden',
+                    minHeight: 220,
+                    bgcolor: '#111',
+                  }}
+                >
+                  {story.video ? (
+                    <Box
+                      component="video"
+                      src={story.video}
+                      poster={story.image}
+                      muted
+                      loop
+                      playsInline
+                      autoPlay
+                      sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <Box
+                      component="img"
+                      src={story.image}
+                      alt=""
+                      sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  )}
+                  <Box sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 25%, rgba(0,0,0,0.75))' }} />
+                  <Box sx={{ position: 'relative', zIndex: 1, p: 2.5, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                    <Typography sx={{ color: '#fff', fontWeight: 800, fontSize: '1.25rem', letterSpacing: '-0.02em' }}>
+                      {story.title}
+                    </Typography>
+                    <Typography sx={{ color: 'rgba(255,255,255,0.82)', fontSize: '0.875rem', mt: 0.5 }}>
+                      {story.desc}
+                    </Typography>
+                  </Box>
+                </Box>
               </Grid>
             ))}
-            {/* CTA card */}
-            <Grid item xs={12} sm={6} md={4} lg={3}>
-              <Box sx={{
-                background: G, borderRadius: '20px', p: 3,
-                display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 180,
-                position: 'relative', overflow: 'hidden',
-                boxShadow: '0 16px 48px rgba(232, 160, 32,0.3)',
-              }}>
-                <Box sx={{ position: 'absolute', top: -30, right: -30, width: 120, height: 120, borderRadius: '50%', background: 'rgba(17, 17, 17, 0.08)' }} />
-                <Typography sx={{ color: '#111111', fontWeight: 800, fontSize: '1.2rem', mb: 1, position: 'relative', zIndex: 1 }}>
-                  Ready to start?
-                </Typography>
-                <Typography sx={{ color: 'rgba(17, 17, 17, 0.8)', fontSize: '0.9rem', mb: 2.5, position: 'relative', zIndex: 1 }}>
-                  Free forever. No credit card.
-                </Typography>
-                <Button
-                  component={Link} to="/get-started"
-                  sx={{
-                    background: 'rgba(17, 17, 17,0.15)', color: '#111111',
-                    fontWeight: 700, borderRadius: '50px', px: 2.5, py: 1,
-                    border: '1px solid rgba(17, 17, 17,0.25)',
-                    backdropFilter: 'blur(8px)',
-                    '&:hover': { background: 'rgba(17, 17, 17,0.25)' },
-                    position: 'relative', zIndex: 1, width: 'fit-content',
-                  }}
-                  endIcon={<ArrowForward />}
-                >
-                  Get Started
-                </Button>
-              </Box>
-            </Grid>
           </Grid>
         </Container>
       </Box>

@@ -4,10 +4,8 @@ import {
   Typography,
   Snackbar,
   Alert,
-  useTheme,
-  useMediaQuery,
 } from '@mui/material';
-import { Mic, CloudUpload } from '@mui/icons-material';
+import { Mic } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import {
   ElevenLabsButton,
@@ -20,6 +18,7 @@ import {
 } from '../ElevenLabsUI';
 import StudioPageShell from '../Layout/StudioPageShell';
 import StudioHistorySection from '../Layout/StudioHistorySection';
+import { STUDIO_VISUALS } from '../../data/studioVisuals';
 import { transcriptionAPI, videoAPI, getFriendlyErrorMessage } from '../../services/api';
 import { registerTrackedJob } from '../../hooks/useBackgroundJobs';
 import { transcriptionResultPathForMedia } from '../../utils/transcriptionRoutes';
@@ -36,8 +35,6 @@ const FORMAT_OPTIONS = [
 
 export default function TranscribeElevenLabs() {
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { userId, balance, refreshBalance } = useStudioUser();
 
   const [selectedFile, setSelectedFile] = useState(null);
@@ -135,52 +132,44 @@ export default function TranscribeElevenLabs() {
         title="Speech to text"
         subtitle="Upload audio or video — we extract speech and return a transcript"
         settingsContent={settingsContent}
-        showPropertiesPanel={!isMobile}
+        hideHeader
+        hero={{
+          image: STUDIO_VISUALS.transcribe.image,
+          title: 'Speech to text',
+          subtitle: 'Drop a recording onto the studio still — history stays a list below.',
+          height: 280,
+          children: (
+            <Box
+              data-tour="transcribe-upload"
+              sx={{
+                mt: 2,
+                borderRadius: '14px',
+                bgcolor: 'rgba(255,255,255,0.94)',
+                p: { xs: 2, md: 2.5 },
+                textAlign: 'center',
+              }}
+            >
+              <Typography sx={{ fontSize: '0.9375rem', fontWeight: 600, color: '#1a1a1a', mb: 0.5 }}>
+                Drop audio or video here
+              </Typography>
+              <Typography sx={{ fontSize: '0.8125rem', color: '#666', mb: 1.5 }}>
+                MP3, WAV, MP4, MOV — up to 500MB
+              </Typography>
+              <ElevenLabsFileUpload
+                onFileSelect={setSelectedFile}
+                selectedFile={selectedFile}
+                onClearFile={() => setSelectedFile(null)}
+                accept="audio/*,video/*"
+              />
+            </Box>
+          ),
+        }}
       >
         <StudioJobProgressBar
           open={loading}
           message="Transcribing…"
           submessage="Extracting speech from your audio or video"
         />
-        <Box
-          data-tour="transcribe-upload"
-          sx={{
-            border: selectedFile ? '2px solid #E8A020' : '2px dashed #e8e8e8',
-            borderRadius: '16px',
-            bgcolor: selectedFile ? 'rgba(232,160,32,0.04)' : '#fafafa',
-            p: { xs: 3, md: 5 },
-            textAlign: 'center',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          <Box
-            sx={{
-              width: 56,
-              height: 56,
-              borderRadius: '12px',
-              bgcolor: 'rgba(232,160,32,0.12)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mx: 'auto',
-              mb: 2,
-            }}
-          >
-            <CloudUpload sx={{ fontSize: 28, color: '#E8A020' }} />
-          </Box>
-          <Typography sx={{ fontSize: '0.9375rem', fontWeight: 600, color: '#1a1a1a', mb: 0.5 }}>
-            Drop audio or video here
-          </Typography>
-          <Typography sx={{ fontSize: '0.8125rem', color: '#666', mb: 2 }}>
-            MP3, WAV, MP4, MOV — up to 500MB, 2–3+ hours supported
-          </Typography>
-          <ElevenLabsFileUpload
-            onFileSelect={setSelectedFile}
-            selectedFile={selectedFile}
-            onClearFile={() => setSelectedFile(null)}
-            accept="audio/*,video/*"
-          />
-        </Box>
 
         <StudioHistorySection sourceId="transcription" />
       </StudioPageShell>

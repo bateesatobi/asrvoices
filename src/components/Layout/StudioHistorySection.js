@@ -12,21 +12,21 @@ import { ElevenLabsTabs } from '../ElevenLabsUI';
 
 const SERVICE_TABLES = {
   transcription: {
-    title: 'Transcription history',
+    title: 'History',
     tables: [
       { id: 'audio', Component: DataTable, label: 'Audio', icon: <Mic fontSize="small" /> },
       { id: 'video', Component: VideoTable, label: 'Video', icon: <Videocam fontSize="small" /> },
     ],
   },
-  tts: { Component: TextTable, title: 'Speech history' },
-  translation: { Component: TranslationsTable, title: 'Translation history' },
-  summary: { Component: SummaryTable, title: 'Summary history' },
-  dubbing: { Component: DubbedVideosTable, title: 'Dubbing history' },
-  voiceover: { Component: VoiceoverTable, title: 'Voiceover history' },
+  tts: { Component: TextTable, title: 'History' },
+  translation: { Component: TranslationsTable, title: 'History' },
+  summary: { Component: SummaryTable, title: 'History' },
+  dubbing: { Component: DubbedVideosTable, title: 'History' },
+  voiceover: { Component: VoiceoverTable, title: 'History' },
 };
 
 /**
- * Full history table for studio main body — latest entries first (via ResultsTable default sort).
+ * Flat history table for studio pages — one list, no nested cards.
  */
 export default function StudioHistorySection({ sourceId, title }) {
   const config = SERVICE_TABLES[sourceId];
@@ -43,59 +43,37 @@ export default function StudioHistorySection({ sourceId, title }) {
 
   const { Component, tables, title: defaultTitle } = config;
 
-  if (tables?.length) {
-    const activeTable = tables[historyTab] || tables[0];
-    const TableComponent = activeTable.Component;
-    const tabItems = tables.map((t) => ({ label: t.label, icon: t.icon }));
-
-    return (
-      <Box
-        data-tour="studio-history"
-        sx={{ mt: 4, pt: 3, borderTop: '1px solid #f0f0f0', width: '100%' }}
-      >
-        <Typography
-          sx={{
-            fontSize: '0.8125rem',
-            fontWeight: 600,
-            color: '#666',
-            textTransform: 'uppercase',
-            letterSpacing: '0.06em',
-            mb: 2,
-          }}
-        >
-          {title || defaultTitle}
-        </Typography>
-
-        <ElevenLabsTabs
-          value={historyTab}
-          onChange={(_, v) => setHistoryTab(v)}
-          tabs={tabItems}
-          sx={{ mb: 2 }}
-        />
-
-        <TableComponent refreshKey={refreshKey} />
-      </Box>
-    );
-  }
-
   return (
     <Box
       data-tour="studio-history"
-      sx={{ mt: 4, pt: 3, borderTop: '1px solid #f0f0f0', width: '100%' }}
+      sx={{ mt: 4, pt: 2.5, borderTop: '1px solid #ececec', width: '100%' }}
     >
       <Typography
         sx={{
-          fontSize: '0.8125rem',
-          fontWeight: 600,
-          color: '#666',
+          fontSize: '0.75rem',
+          fontWeight: 700,
+          color: '#888',
           textTransform: 'uppercase',
-          letterSpacing: '0.06em',
-          mb: 2,
+          letterSpacing: '0.08em',
+          mb: 1.5,
         }}
       >
         {title || defaultTitle}
       </Typography>
-      <Component refreshKey={refreshKey} />
+
+      {tables?.length ? (
+        <>
+          <ElevenLabsTabs
+            value={historyTab}
+            onChange={(_, v) => setHistoryTab(v)}
+            tabs={tables.map((t) => ({ label: t.label, icon: t.icon }))}
+            sx={{ mb: 1.5 }}
+          />
+          {React.createElement(tables[historyTab]?.Component || tables[0].Component, { refreshKey })}
+        </>
+      ) : (
+        <Component refreshKey={refreshKey} />
+      )}
     </Box>
   );
 }

@@ -1,11 +1,24 @@
-import React, { useState } from 'react';
-import { Box, useMediaQuery, useTheme } from '@mui/material';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Box, Drawer, IconButton, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { ChevronRight, Tune } from '@mui/icons-material';
 
-const PROPERTIES_PANEL_WIDTH = 320;
+const PANEL_WIDTH = 268;
+const RAIL_WIDTH = 44;
+const STORAGE_KEY = 'avoices-studio-inspector-open';
+
+function readStoredOpen() {
+  try {
+    const v = localStorage.getItem(STORAGE_KEY);
+    if (v === '0') return false;
+    if (v === '1') return true;
+  } catch {
+    /* ignore */
+  }
+  return true;
+}
 
 /**
- * StudioLayout - Center workspace + optional right properties panel + bottom bar.
- * Designed to fill the area below the dashboard top bar (height: 100%).
+ * Studio workspace: center canvas + collapsible right inspector + optional bottom bar.
  */
 export default function StudioLayout({
   children,
@@ -15,16 +28,81 @@ export default function StudioLayout({
 }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('lg'));
-  const [propertiesOpen] = useState(true);
+  const [open, setOpen] = useState(readStoredOpen);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  const effectivePropertiesOpen = isMobile
-    ? false
-    : isTablet
-      ? false
-      : propertiesOpen && showPropertiesPanel;
+  const persist = useCallback((next) => {
+    setOpen(next);
+    try {
+      localStorage.setItem(STORAGE_KEY, next ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
-  const propertiesWidth = effectivePropertiesOpen && propertiesPanel ? PROPERTIES_PANEL_WIDTH : 0;
+  useEffect(() => {
+    if (isMobile) setMobileOpen(false);
+  }, [isMobile]);
+
+  const hasPanel = Boolean(propertiesPanel) && showPropertiesPanel;
+  const desktopOpen = hasPanel && !isMobile && open;
+  const desktopRail = hasPanel && !isMobile && !open;
+  const inspectorWidth = desktopOpen ? PANEL_WIDTH : desktopRail ? RAIL_WIDTH : 0;
+
+  const inspectorHeader = (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        px: 1.25,
+        py: 0.85,
+        minHeight: 44,
+        borderBottom: '1px solid #ececec',
+        flexShrink: 0,
+      }}
+    >
+      <Typography
+        sx={{
+          fontSize: '0.6875rem',
+          fontWeight: 800,
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          color: '#888',
+        }}
+      >
+        Settings
+      </Typography>
+      {!isMobile ? (
+        <Tooltip title="Collapse settings">
+          <IconButton
+            size="small"
+            aria-label="Collapse settings"
+            onClick={() => persist(false)}
+            sx={{ color: '#888', '&:hover': { color: '#111', bgcolor: 'rgba(17,17,17,0.04)' } }}
+          >
+            <ChevronRight sx={{ fontSize: 20 }} />
+          </IconButton>
+        </Tooltip>
+      ) : (
+        <IconButton
+          size="small"
+          aria-label="Close settings"
+          onClick={() => setMobileOpen(false)}
+          sx={{ color: '#888' }}
+        >
+          <ChevronRight sx={{ fontSize: 20 }} />
+        </IconButton>
+      )}
+    </Box>
+  );
+
+  const inspectorBody = (
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, bgcolor: '#fff' }}>
+      {inspectorHeader}
+      <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', minHeight: 0 }}>{propertiesPanel}</Box>
+    </Box>
+  );
 
   return (
     <Box
@@ -34,6 +112,7 @@ export default function StudioLayout({
         minHeight: 0,
         overflow: 'hidden',
         bgcolor: '#FAFAFA',
+        position: 'relative',
       }}
     >
       <Box
@@ -51,7 +130,7 @@ export default function StudioLayout({
           <Box
             sx={{
               flexShrink: 0,
-              borderTop: '1px solid #e8e8e8',
+              borderTop: '1px solid #ececec',
               bgcolor: '#ffffff',
             }}
           >
@@ -60,30 +139,103 @@ export default function StudioLayout({
         )}
       </Box>
 
-      {propertiesPanel && (
+      {hasPanel && !isMobile && (
         <Box
           sx={{
-            width: propertiesWidth,
-            minWidth: propertiesWidth,
-            maxWidth: propertiesWidth,
+            width: inspectorWidth,
+            minWidth: inspectorWidth,
+            maxWidth: inspectorWidth,
             height: '100%',
-            overflowY: 'auto',
-            overflowX: 'hidden',
             bgcolor: '#ffffff',
-            borderLeft: '1px solid #e8e8e8',
+            borderLeft: '1px solid #ececec',
             transition: 'width 0.2s ease, min-width 0.2s ease, max-width 0.2s ease',
             flexShrink: 0,
-            '&::-webkit-scrollbar': { width: 6 },
-            '&::-webkit-scrollbar-track': { background: '#fafafa' },
-            '&::-webkit-scrollbar-thumb': {
-              background: '#e8e8e8',
-              borderRadius: 3,
-              '&:hover': { background: '#d0d0d0' },
-            },
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
           }}
         >
-          {propertiesPanel}
+          {desktopOpen ? (
+            inspectorBody
+          ) : (
+            <Box
+              sx={{
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                pt: 1,
+                gap: 1.5,
+              }}
+            >
+              <Tooltip title="Open settings" placement="left">
+                <IconButton
+                  aria-label="Open settings"
+                  onClick={() => persist(true)}
+                  sx={{
+                    color: '#111',
+                    bgcolor: 'rgba(232,160,32,0.12)',
+                    '&:hover': { bgcolor: 'rgba(232,160,32,0.22)' },
+                  }}
+                >
+                  <Tune sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Tooltip>
+              <Typography
+                sx={{
+                  writingMode: 'vertical-rl',
+                  transform: 'rotate(180deg)',
+                  fontSize: '0.6875rem',
+                  fontWeight: 800,
+                  letterSpacing: '0.16em',
+                  textTransform: 'uppercase',
+                  color: '#aaa',
+                  userSelect: 'none',
+                }}
+              >
+                Settings
+              </Typography>
+            </Box>
+          )}
         </Box>
+      )}
+
+      {hasPanel && isMobile && (
+        <>
+          <Tooltip title="Settings">
+            <IconButton
+              aria-label="Open settings"
+              onClick={() => setMobileOpen(true)}
+              sx={{
+                position: 'absolute',
+                right: 12,
+                top: 12,
+                zIndex: 8,
+                bgcolor: '#111',
+                color: '#fff',
+                width: 40,
+                height: 40,
+                boxShadow: '0 8px 24px rgba(17,17,17,0.18)',
+                '&:hover': { bgcolor: '#222' },
+              }}
+            >
+              <Tune sx={{ fontSize: 20 }} />
+            </IconButton>
+          </Tooltip>
+          <Drawer
+            anchor="right"
+            open={mobileOpen}
+            onClose={() => setMobileOpen(false)}
+            PaperProps={{
+              sx: {
+                width: 'min(100%, 300px)',
+                bgcolor: '#fff',
+              },
+            }}
+          >
+            {inspectorBody}
+          </Drawer>
+        </>
       )}
     </Box>
   );

@@ -4,10 +4,10 @@ import {
   Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   TextField, IconButton, Typography, Button, Tooltip, Chip,
   Stack, InputAdornment, Menu, MenuItem, ListItemIcon, Divider, Alert,
-  FormControl, Select, Snackbar, Card, useMediaQuery, useTheme,
+  FormControl, Select, Snackbar, useMediaQuery, useTheme,
 } from '@mui/material';
 import {
-  InboxOutlined, Search, Delete, Visibility, MoreVert, Share,
+  Search, Delete, Visibility, MoreVert, Share,
   Refresh, CalendarMonth as CalendarIcon, Download, Replay,
 } from '@mui/icons-material';
 import ReactPaginate from 'react-paginate';
@@ -15,7 +15,7 @@ import './Pagination.css';
 import Skeleton from '@mui/material/Skeleton';
 import { dataAPI } from '../services/api';
 import {
-  AC, G, fetchAllVaultActivity, filterVaultEntries, formatRelativeDate,
+  AC, fetchAllVaultActivity, filterVaultEntries, formatRelativeDate,
   formatFullDate, isProcessingStatus, VAULT_SOURCES, readAllVaultActivityCache,
   invalidateVaultCache, getAssetDownloadUrl,
 } from '../utils/mediaVault';
@@ -242,30 +242,12 @@ export default function AllActivityFeed({ refreshKey = 0, onMetrics, statusFilte
       {initialLoading ? (
         <Stack spacing={1.5}>{[...Array(5)].map((_, i) => <Skeleton key={i} height={48} sx={{ borderRadius: 2 }} />)}</Stack>
       ) : filtered.length === 0 ? (
-        <Box sx={{ textAlign: 'center', py: 8 }}>
-          <InboxOutlined sx={{ fontSize: 48, color: 'rgba(17,17,17,0.15)', mb: 2 }} />
+        <Box sx={{ py: 4 }}>
           <Typography fontWeight={700} mb={0.5}>{filter ? 'No matches' : 'No assets yet'}</Typography>
-          <Typography variant="body2" color="text.secondary" mb={2}>
+          <Typography variant="body2" color="text.secondary">
             {filter ? `Nothing matches "${filter}"` : 'Create content in any studio and it will appear here.'}
           </Typography>
-          <Button variant="contained" onClick={() => navigate('/dashboard/transcribe')} sx={{ background: G, fontWeight: 800, borderRadius: '12px' }}>Open Transcribe Studio</Button>
         </Box>
-      ) : isMobile ? (
-        <Stack spacing={1.5}>
-          {displayed.map(row => (
-            <Card key={`${row._vaultType}-${row.doc_id}`} sx={{ p: 2, borderRadius: '12px', border: '1px solid rgba(17,17,17,0.06)' }}>
-              <Stack direction="row" justifyContent="space-between" mb={1}>
-                <Chip label={row._vaultLabel} size="small" sx={{ bgcolor: `${row._vaultColor}18`, color: row._vaultColor, fontWeight: 800, fontSize: '0.65rem' }} />
-                {statusChip(row._status)}
-              </Stack>
-              <Typography fontWeight={700} fontSize="0.9rem" mb={0.5} onClick={() => handleView(row)} sx={{ cursor: 'pointer' }}>{row._title}</Typography>
-              <Tooltip title={formatFullDate(row._date)}><Typography variant="caption" color="text.secondary">{formatRelativeDate(row._date)}</Typography></Tooltip>
-              <Stack direction="row" spacing={0.5} justifyContent="flex-end" mt={1}>
-                <IconButton size="small" aria-label="Open actions" onClick={e => { setAnchor(e.currentTarget); setActiveRow(row); }}><MoreVert sx={{ fontSize: 18 }} /></IconButton>
-              </Stack>
-            </Card>
-          ))}
-        </Stack>
       ) : (
         <TableContainer sx={{ opacity: refreshing ? 0.85 : 1, transition: 'opacity 0.2s' }}>
           <Table size="small">

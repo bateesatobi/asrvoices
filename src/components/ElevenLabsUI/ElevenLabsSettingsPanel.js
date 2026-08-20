@@ -7,6 +7,7 @@ import {
   MenuItem,
   FormControl,
   FormControlLabel,
+  Switch,
 } from '@mui/material';
 
 /**

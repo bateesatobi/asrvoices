@@ -36,7 +36,16 @@ const MOOD_COLORS = {
   Peaceful: '#34d399',
   Confident: '#0ea5e9',
   Emotional: '#c084fc',
+  Dramatic: '#7c3aed',
 };
+
+function formatDuration(seconds) {
+  const n = Number(seconds);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  const m = Math.floor(n / 60);
+  const s = Math.round(n % 60);
+  return m > 0 ? `${m}:${String(s).padStart(2, '0')}` : `${s}s`;
+}
 
 function resolveTrackUrl(track) {
   const raw = track.preview_url || track.url || '';
@@ -104,7 +113,9 @@ function TrackCard({ track, isPlaying, onPlay, onUse }) {
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#111' }}>{track.name}</Typography>
-          <Typography sx={{ fontSize: '0.75rem', color: '#888' }}>{track.genre}</Typography>
+          <Typography sx={{ fontSize: '0.75rem', color: '#888' }}>
+            {[track.source, track.genre].filter(Boolean).join(' · ')}
+          </Typography>
         </Box>
       </Stack>
 
@@ -114,7 +125,11 @@ function TrackCard({ track, isPlaying, onPlay, onUse }) {
           <Chip label={`${track.bpm} BPM`} size="small" sx={{ height: 22, fontSize: '0.6875rem', bgcolor: '#f5f5f5', color: '#666' }} />
         )}
         {track.duration && (
-          <Chip label={`${track.duration}s loop`} size="small" sx={{ height: 22, fontSize: '0.6875rem', bgcolor: '#fafafa', color: '#777' }} />
+          <Chip
+            label={formatDuration(track.duration)}
+            size="small"
+            sx={{ height: 22, fontSize: '0.6875rem', bgcolor: '#fafafa', color: '#777' }}
+          />
         )}
       </Stack>
 
@@ -156,7 +171,7 @@ export default function SoundtracksElevenLabs() {
   const [volume, setVolume] = useState(0.7);
 
   useEffect(() => {
-    soundtracksAPI.getTracks()
+    soundtracksAPI.getTracks(true)
       .then((data) => setTracks(data.tracks || []))
       .catch(() => {})
       .finally(() => setLoading(false));

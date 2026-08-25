@@ -420,8 +420,10 @@ export const videoAPI = {
     return response.data;
   },
 
-  getBgmTracks: async () => {
-    const response = await apiClient.get('/api/bgm-tracks');
+  getBgmTracks: async (refresh = true) => {
+    const response = await apiClient.get('/api/bgm-tracks', {
+      params: refresh ? { refresh: true } : undefined,
+    });
     return response.data;
   },
 

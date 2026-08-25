@@ -480,9 +480,9 @@ export default function VoiceoverStudio({ userId }) {
   const bgmAudioRef = useRef(null);
   const slideshowPollRef = useRef(null);
   const fallbackTracks = [
-    { id: 'Corporate.mp3', name: 'Corporate', url: '/bgm-stream/Corporate.mp3' },
-    { id: 'Ambient.mp3', name: 'Ambient', url: '/bgm-stream/Ambient.mp3' },
-    { id: 'Upbeat.mp3', name: 'Upbeat', url: '/bgm-stream/Upbeat.mp3' },
+    { id: 'apalon-beats', name: 'Apalon Beats', filename: 'apalon_beats.mp3', url: '/bgm-stream/apalon_beats.mp3', mood: 'Energetic' },
+    { id: 'summer-heart', name: 'Summer in Your Heart', filename: 'summer_heart.mp3', url: '/bgm-stream/summer_heart.mp3', mood: 'Warm' },
+    { id: 'the-mountain-uplifting', name: 'The Mountain Uplifting', filename: 'the_mountain_uplifting.mp3', url: '/bgm-stream/the_mountain_uplifting.mp3', mood: 'Uplifting' },
   ];
 
   const savePreset = (block) => {
@@ -620,9 +620,13 @@ export default function VoiceoverStudio({ userId }) {
   };
 
   const selectedBgmTrack = bgmTracks.find(t => t.id === selectedBgm);
-  const selectedBgmPreviewUrl = selectedBgmTrack
-    ? `${BASE_URL}${selectedBgmTrack.url}`
-    : null;
+  const selectedBgmPreviewUrl = (() => {
+    if (!selectedBgmTrack) return null;
+    const raw = selectedBgmTrack.preview_url || selectedBgmTrack.url || '';
+    if (raw.startsWith('http')) return raw;
+    if (raw.startsWith('/')) return `${BASE_URL}${raw}`;
+    return `${BASE_URL}/bgm-stream/${selectedBgmTrack.filename || selectedBgmTrack.id}`;
+  })();
 
   const stopSlideshowPoll = () => {
     if (slideshowPollRef.current) {

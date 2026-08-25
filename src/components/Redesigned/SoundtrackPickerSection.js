@@ -20,7 +20,7 @@ export function useSoundtrackPicker(initialVolume = 0.12) {
   useEffect(() => {
     setTracksLoading(true);
     soundtracksAPI
-      .getTracks()
+      .getTracks(true)
       .then((data) => {
         const tracks = data?.tracks?.length ? data.tracks : [];
         setBgmTracks(tracks);
@@ -279,7 +279,7 @@ export default function SoundtrackPickerSection({
             onChange={(e) => setSelectedBgm(e.target.value)}
             options={bgmTracks.map((t) => ({
               value: t.id,
-              label: `${t.name} (${t.mood})`,
+              label: t.source ? `${t.name} — ${t.source}` : `${t.name} (${t.mood})`,
             }))}
           />
           {dryAudioUrl && (

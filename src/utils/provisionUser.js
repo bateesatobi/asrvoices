@@ -37,6 +37,7 @@ async function callProvision(firebaseUser, { withToken = true } = {}) {
  */
 export async function provisionUserAccount(firebaseUser, { notify = true } = {}) {
   if (!firebaseUser) return null;
+  if (hasExplicitLogout()) return null;
 
   let result;
   try {
@@ -57,6 +58,7 @@ export async function provisionUserAccount(firebaseUser, { notify = true } = {})
     email: firebaseUser.email || '',
     balance: result?.balance,
   };
+  if (hasExplicitLogout()) return null;
   localStorage.setItem('user', JSON.stringify(userData));
   localStorage.setItem('loginAt', Date.now().toString());
 
@@ -94,13 +96,25 @@ export async function provisionStoredUser({ notify = false } = {}) {
 }
 
 /** Clear local session and Firebase so the next login can pick a different Google account. */
+export const EXPLICIT_LOGOUT_KEY = 'avoices_logged_out';
+
+export function markExplicitLogout() {
+  localStorage.setItem(EXPLICIT_LOGOUT_KEY, '1');
+}
+
+export function clearExplicitLogout() {
+  localStorage.removeItem(EXPLICIT_LOGOUT_KEY);
+}
+
+export function hasExplicitLogout() {
+  return localStorage.getItem(EXPLICIT_LOGOUT_KEY) === '1';
+}
+
 export async function clearStaleAuthSession() {
   localStorage.removeItem('user');
   localStorage.removeItem('loginAt');
   try {
-    if (auth.currentUser) {
-      await signOut(auth);
-    }
+    await signOut(auth);
   } catch (_) {
     /* already signed out */
   }

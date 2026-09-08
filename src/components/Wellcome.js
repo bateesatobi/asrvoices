@@ -5,7 +5,7 @@ import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { useAuth } from './AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { auth } from './firebaseConfig';
-import { provisionUserAccount, clearStaleAuthSession } from '../utils/provisionUser';
+import { provisionUserAccount, clearStaleAuthSession, clearExplicitLogout } from '../utils/provisionUser';
 import { getFriendlyErrorMessage } from '../utils/errors';
 import {
   M_AC, M_GRADIENT, M_BLACK, M_BORDER, M_SURFACE, M_TEXT_MUTED, mBtnSecondary,
@@ -24,6 +24,7 @@ const Welcome = () => {
     provider.setCustomParameters({ prompt: 'select_account' });
     try {
       await clearStaleAuthSession();
+      clearExplicitLogout();
       const result = await signInWithPopup(auth, provider);
       await provisionUserAccount(result.user, { notify: true });
       setIsAuthenticated(true);

@@ -16,7 +16,7 @@ Your `asrvoices` project is a React.js application with:
 - Redux for state management
 - Firebase integration
 - Stripe payment integration
-- API integration with `https://phosai-backend-api-latest.onrender.com`
+- API integration with `https://api.phosaico.com`
 
 ## Deployment Steps
 
@@ -59,7 +59,7 @@ Add these environment variables in Render dashboard:
 
 **Required Variables:**
 ```
-REACT_APP_API_URL = https://phosai-backend-api-latest.onrender.com
+REACT_APP_API_URL = https://api.phosaico.com
 NODE_ENV = production
 ```
 

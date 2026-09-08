@@ -9,7 +9,7 @@ services:
     staticPublishPath: ./build
     envVars:
       - key: REACT_APP_API_URL
-        value: https://phosai-backend-api-latest.onrender.com
+        value: https://api.phosaico.com
       - key: REACT_APP_AGENTS_API_URL
         value: https://phosconversation.onrender.com
       - key: NODE_ENV

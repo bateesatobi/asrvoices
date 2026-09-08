@@ -9,7 +9,7 @@ export const API_DOCS_TITLE = 'Avoices API';
 export function getApiBaseUrl() {
   return (
     process.env.REACT_APP_API_URL
-    || 'https://phosai-backend-api-latest.onrender.com'
+    || 'https://api.phosaico.com'
   ).replace(/\/$/, '');
 }
 

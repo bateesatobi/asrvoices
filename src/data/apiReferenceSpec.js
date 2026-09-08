@@ -1,16 +1,15 @@
 /**
  * Avoices REST API reference — aligned with ASRAPI/main.py routes.
- * Base URL is resolved at runtime from REACT_APP_API_URL.
+ * Base URL is resolved at runtime from REACT_APP_API_URL or runtime-config.js.
  */
+
+import { resolveApiBaseUrl } from '../constants/apiBase';
 
 export const API_VERSION = '1.0';
 export const API_DOCS_TITLE = 'Avoices API';
 
 export function getApiBaseUrl() {
-  return (
-    process.env.REACT_APP_API_URL
-    || 'https://api.phosaico.com'
-  ).replace(/\/$/, '');
+  return resolveApiBaseUrl();
 }
 
 /** @typedef {{ name: string, type: string, required?: boolean, description: string }} ApiParam */

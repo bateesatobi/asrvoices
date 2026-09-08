@@ -38,6 +38,7 @@ import InfoIcon from '@mui/icons-material/Info';
 import HttpIcon from '@mui/icons-material/Http';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { getApiBaseUrl } from '../data/apiReferenceSpec';
 
 // Enhanced animations
 const float = keyframes`
@@ -514,7 +515,7 @@ const ParametersSection = ({ parameters }) => {
 };
 
 const generateCodeSnippets = (endpoint) => {
-  const baseUrl = (process.env.REACT_APP_API_URL || 'https://api.phosaico.com').replace(/\/$/, '');
+  const baseUrl = getApiBaseUrl();
   const isJson = endpoint.parameters?.type === "application/json";
   const isWs = endpoint.parameters?.type === "websocket";
   const isClone = endpoint.parameters?.type === "multipart/form-data-clone";

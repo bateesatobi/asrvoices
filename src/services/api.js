@@ -6,11 +6,10 @@
 import axios from 'axios';
 import { parseError, notifyUser } from '../utils/errors';
 import { NEURAL_SPEAKERS } from '../constants/neural_config';
+import { API_BASE_URL } from '../constants/apiBase';
 
 // Base configuration
-export const BASE_URL = (
-  process.env.REACT_APP_API_URL || 'https://api.phosaico.com'
-).replace(/\/$/, '');
+export const BASE_URL = API_BASE_URL;
 
 /** API-proxied playback for studio videos (fixes R2 missing Content-Type / CORS). */
 export const studioPlaybackUrl = (kind, docId) =>

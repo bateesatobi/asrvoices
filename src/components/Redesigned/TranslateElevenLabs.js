@@ -41,7 +41,11 @@ import {
   clearTranslation,
 } from '../../store/slices/translationSlice';
 import { translationAPI, subscriptionAPI, BASE_URL } from '../../services/api';
-import { LANGUAGES } from '../../constants/languages';
+import {
+  TRANSLATE_LANGUAGES,
+  getTranslateLanguageLabel,
+  toIso6393,
+} from '../../constants/translateLanguages';
 import useStudioUser from '../../hooks/useStudioUser';
 import { StudioJobProgressBar } from '../progress';
 import { STUDIO_VISUALS } from '../../data/studioVisuals';
@@ -98,6 +102,8 @@ export default function TranslateElevenLabs() {
   const isTextMode = inputTab === 0;
   const canTranslate = isTextMode ? inputText.trim().length > 0 : Boolean(selectedFile);
   const busy = isLoading || streaming;
+  const sourceIso = toIso6393(sourceLanguage) || sourceLanguage;
+  const targetIso = toIso6393(targetLanguage) || targetLanguage;
 
   useEffect(() => {
     if (sliceError) setToast({ sev: 'error', msg: sliceError });
@@ -209,8 +215,8 @@ export default function TranslateElevenLabs() {
         const result = await dispatch(
           translateText({
             text: inputText,
-            sourceLang: sourceLanguage,
-            targetLang: targetLanguage,
+            sourceLang: sourceIso,
+            targetLang: targetIso,
             userId,
           })
         ).unwrap();
@@ -223,8 +229,8 @@ export default function TranslateElevenLabs() {
         const result = await dispatch(
           translateDocument({
             file: selectedFile,
-            sourceLang: sourceLanguage,
-            targetLang: targetLanguage,
+            sourceLang: sourceIso,
+            targetLang: targetIso,
             userId,
           })
         ).unwrap();
@@ -246,17 +252,22 @@ export default function TranslateElevenLabs() {
     setStreamInfo('');
   };
 
-  const sourceLabel = LANGUAGES.find((l) => l.value === sourceLanguage)?.label || sourceLanguage;
-  const targetLabel = LANGUAGES.find((l) => l.value === targetLanguage)?.label || targetLanguage;
+  useEffect(() => {
+    if (sourceIso && sourceIso !== sourceLanguage) dispatch(setSourceLanguage(sourceIso));
+    if (targetIso && targetIso !== targetLanguage) dispatch(setTargetLanguage(targetIso));
+  }, [dispatch, sourceIso, sourceLanguage, targetIso, targetLanguage]);
+
+  const sourceLabel = getTranslateLanguageLabel(sourceIso);
+  const targetLabel = getTranslateLanguageLabel(targetIso);
 
   const settingsContent = (
     <ElevenLabsSettingsPanel sx={{ border: 'none', boxShadow: 'none', borderRadius: 0 }}>
       <SettingSection title="Languages">
         <SettingSelect
           label="Source"
-          value={sourceLanguage}
+          value={sourceIso}
           onChange={(e) => dispatch(setSourceLanguage(e.target.value))}
-          options={LANGUAGES.map((l) => ({ value: l.value, label: l.label }))}
+          options={TRANSLATE_LANGUAGES}
         />
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 1 }}>
           <IconButton
@@ -274,9 +285,9 @@ export default function TranslateElevenLabs() {
         </Box>
         <SettingSelect
           label="Target"
-          value={targetLanguage}
+          value={targetIso}
           onChange={(e) => dispatch(setTargetLanguage(e.target.value))}
-          options={LANGUAGES.map((l) => ({ value: l.value, label: l.label }))}
+          options={TRANSLATE_LANGUAGES}
         />
       </SettingSection>
       <PropertySection title="Account" defaultOpen={false}>

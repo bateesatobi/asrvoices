@@ -3,6 +3,7 @@ import {
   fetchVaultCached, setVaultCacheEntry,
   readVaultCacheSync, VAULT_CACHE_KEYS, invalidateVaultCache,
 } from './vaultCache';
+import { getTranslateLanguageLabel, toIso6393 } from '../constants/translateLanguages';
 
 export { invalidateVaultCache, VAULT_CACHE_KEYS, readVaultCacheSync };
 
@@ -73,6 +74,8 @@ const LANG_NAMES = {
 
 export function langLabel(code) {
   if (!code) return '—';
+  const iso3 = toIso6393(code);
+  if (iso3) return getTranslateLanguageLabel(iso3);
   return LANG_NAMES[code] || String(code).toUpperCase();
 }
 

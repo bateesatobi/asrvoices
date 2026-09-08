@@ -8,6 +8,7 @@ import {
   FormControl,
   FormControlLabel,
   Switch,
+  ListSubheader,
 } from '@mui/material';
 
 /**
@@ -61,6 +62,25 @@ export function SettingSlider({ label, value, onChange, min = 0, max = 100, step
 }
 
 export function SettingSelect({ label, value, onChange, options }) {
+  const hasGroups = options.some((option) => option.group);
+  const menuItems = [];
+  let lastGroup = null;
+  options.forEach((option) => {
+    if (hasGroups && option.group && option.group !== lastGroup) {
+      lastGroup = option.group;
+      menuItems.push(
+        <ListSubheader key={`group-${lastGroup}`} sx={{ fontWeight: 800, fontSize: '0.7rem', letterSpacing: '0.04em' }}>
+          {lastGroup}
+        </ListSubheader>
+      );
+    }
+    menuItems.push(
+      <MenuItem key={option.value} value={option.value}>
+        {option.label}
+      </MenuItem>
+    );
+  });
+
   return (
     <Box sx={{ mb: 1.75 }}>
       <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#555', mb: 0.75 }}>
@@ -71,6 +91,7 @@ export function SettingSelect({ label, value, onChange, options }) {
           size="small"
           value={value}
           onChange={onChange}
+          MenuProps={{ PaperProps: { sx: { maxHeight: 360 } } }}
           sx={{
             bgcolor: '#fafafa',
             borderRadius: '8px',
@@ -87,11 +108,7 @@ export function SettingSelect({ label, value, onChange, options }) {
             },
           }}
         >
-          {options.map((option) => (
-            <MenuItem key={option.value} value={option.value}>
-              {option.label}
-            </MenuItem>
-          ))}
+          {menuItems}
         </Select>
       </FormControl>
     </Box>

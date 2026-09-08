@@ -4,6 +4,7 @@
 
 import { langLabel } from './mediaVault';
 import { LANGUAGES } from '../constants/languages';
+import { getTranslateLanguageLabel, toIso6393 } from '../constants/translateLanguages';
 
 export function extractTranslationText(value) {
   if (value == null || value === '') return '';
@@ -106,6 +107,8 @@ export function isTranscriptionProcessing(entry) {
 /** Human-readable language name for any code stored in Firestore. */
 export function getLanguageDisplayName(code) {
   if (!code) return 'Unknown';
+  const iso3 = toIso6393(code);
+  if (iso3) return getTranslateLanguageLabel(iso3);
   const fromApp = LANGUAGES.find((l) => l.value === code);
   if (fromApp) return fromApp.label;
   return langLabel(code);

@@ -1,13 +1,15 @@
 import { NEURAL_LANGUAGES } from './neural_config';
+import { ASR_LANG_CODES } from './asrLanguages';
 
 /** ISO-style codes used in studios + API */
 export const NEURAL_LANG_CODES = NEURAL_LANGUAGES.filter(l => l.code !== 'all').map(l => l.code);
 
 const FLAG_BY_CODE = {
-  en: '🇬🇧', ach: '🇺🇬', teo: '🇺🇬', fat: '🇬🇭', hau: '🇳🇬', ibo: '🇳🇬', kik: '🇰🇪',
+  en: '🇬🇧', eng: '🇬🇧', ach: '🇺🇬', teo: '🇺🇬', fat: '🇬🇭', hau: '🇳🇬', ibo: '🇳🇬', kik: '🇰🇪',
   kin: '🇷🇼', lug: '🇺🇬', lgg: '🇺🇬', luo: '🇰🇪', pcm: '🇳🇬', nyn: '🇺🇬', swa: '🇹🇿',
   twi: '🇬🇭', wol: '🇸🇳', yor: '🇳🇬', fr: '🇫🇷', es: '🇪🇸', pt: '🇵🇹', de: '🇩🇪', ar: '🇸🇦',
   xog: '🇺🇬', laj: '🇺🇬', alz: '🇺🇬', nyo: '🇺🇬', kdj: '🇺🇬', pok: '🇰🇪', lth: '🇺🇬',
+  myx: '🇺🇬', ttj: '🇺🇬',
 };
 
 const REGION_BY_CODE = {
@@ -16,6 +18,7 @@ const REGION_BY_CODE = {
   swa: 'East Africa', kin: 'Rwanda', hau: 'West Africa', ibo: 'West Africa', yor: 'West Africa',
   wol: 'West Africa', fat: 'West Africa', twi: 'West Africa', kik: 'East Africa', pcm: 'Nigeria',
   xog: 'Uganda', laj: 'Uganda', alz: 'Uganda', nyo: 'Uganda', kdj: 'Uganda', pok: 'East Africa', lth: 'Uganda',
+  myx: 'Uganda', ttj: 'Uganda',
 };
 
 /** Global languages supported in translate / transcribe / summarize pipelines */
@@ -38,6 +41,8 @@ export const LOCAL_MT_LANGUAGES = [
   { code: 'pok', name: 'Pokot', region: 'East Africa', tier: 'local_mt' },
   { code: 'lth', name: 'Ethur', region: 'Uganda', tier: 'local_mt' },
   { code: 'lgg', name: 'Lugbara', region: 'Uganda', tier: 'local_mt' },
+  { code: 'myx', name: 'Lumasaba', region: 'Uganda', tier: 'local_mt' },
+  { code: 'ttj', name: 'Rutooro', region: 'Uganda', tier: 'local_mt' },
 ];
 
 /** African neural voice languages (from neural_config) */
@@ -77,7 +82,7 @@ export const STUDIO_FEATURES = [
     label: 'Voice Recognition',
     path: '/dashboard/transcribe',
     description: 'Upload or record audio; export transcripts in multiple formats.',
-    langCodes: ALL_LANG_CODES,
+    langCodes: ASR_LANG_CODES.map((code) => (code === 'eng' ? 'en' : code)),
     badge: null,
   },
   {
@@ -85,7 +90,7 @@ export const STUDIO_FEATURES = [
     label: 'Video Transcription',
     path: '/dashboard/transcribe',
     description: 'Extract speech from video files and YouTube-style uploads.',
-    langCodes: ALL_LANG_CODES,
+    langCodes: ASR_LANG_CODES.map((code) => (code === 'eng' ? 'en' : code)),
     badge: null,
   },
   {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Button, FormControl, Grid, IconButton, MenuItem,
   Select, TextField, Alert, Tab, Tabs, Stack, Chip, LinearProgress,
-  InputLabel,
+  InputLabel, ListSubheader,
 } from '@mui/material';
 import {
   Translate, CloudUpload, SwapHoriz, Language,
@@ -17,6 +17,7 @@ import {
 } from '../store/slices/translationSlice';
 import DocumentTranslationDrawer from './DocumentTranslationDrawer';
 import { ActivityStrip } from './progress';
+import { TRANSLATE_LANGUAGES, toIso6393 } from '../constants/translateLanguages';
 
 const G = 'linear-gradient(135deg, #f59e0b, #d97706)';
 const GLASS = { background: 'rgba(248, 246, 240, 0.65)', border: '1px solid rgba(232, 160, 32, 0.15)', borderRadius: '14px' };
@@ -31,15 +32,28 @@ const LABEL_SX = { color: 'rgba(17, 17, 17, 0.5)', '&.Mui-focused': { color: '#f
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_TEXT_LENGTH = 5000;
+const TRANSLATE_MENU_PROPS = { PaperProps: { sx: { maxHeight: 360 } } };
 
-const SUPPORTED_LANGUAGES = [
-  { value: 'en',  label: 'English' },
-  { value: 'lg',  label: 'Luganda' },
-  { value: 'sw',  label: 'Kiswahili' },
-  { value: 'ac',  label: 'Acholi' },
-  { value: 'at',  label: 'Ateso' },
-  { value: 'nyn', label: 'Runyankore' },
-];
+function translateLanguageMenuItems() {
+  const items = [];
+  let lastGroup = null;
+  TRANSLATE_LANGUAGES.forEach((lang) => {
+    if (lang.group && lang.group !== lastGroup) {
+      lastGroup = lang.group;
+      items.push(
+        <ListSubheader key={`group-${lastGroup}`} sx={{ fontWeight: 800, fontSize: '0.7rem' }}>
+          {lastGroup}
+        </ListSubheader>
+      );
+    }
+    items.push(
+      <MenuItem key={lang.value} value={lang.value} sx={{ color: '#111111', '&:hover': { color: '#f59e0b' } }}>
+        {lang.label}
+      </MenuItem>
+    );
+  });
+  return items;
+}
 
 const SUPPORTED_FILE_TYPES = [
   { type: 'PDF',  extension: '.pdf' },
@@ -85,11 +99,11 @@ const TranslationCard = () => {
     try {
       if (activeTab === 0) {
         if (inputText.length > MAX_TEXT_LENGTH) throw new Error(`Text exceeds maximum length of ${MAX_TEXT_LENGTH} characters`);
-        await dispatch(translateText({ userId: user.userId, sourceLang: sourceLanguage, targetLang: targetLanguage, text: inputText })).unwrap();
+        await dispatch(translateText({ userId: user.userId, sourceLang: toIso6393(sourceLanguage) || sourceLanguage, targetLang: toIso6393(targetLanguage) || targetLanguage, text: inputText })).unwrap();
       } else {
         if (!selectedFile) throw new Error('No file selected');
         if (selectedFile.size > MAX_FILE_SIZE) throw new Error('File size exceeds 10MB limit');
-        await dispatch(translateDocument({ userId: user.userId, sourceLang: sourceLanguage, targetLang: targetLanguage, file: selectedFile })).unwrap();
+        await dispatch(translateDocument({ userId: user.userId, sourceLang: toIso6393(sourceLanguage) || sourceLanguage, targetLang: toIso6393(targetLanguage) || targetLanguage, file: selectedFile })).unwrap();
       }
     } catch {}
   };
@@ -136,8 +150,8 @@ const TranslationCard = () => {
           <Grid item xs={12} sm={5}>
             <FormControl fullWidth size="small">
               <InputLabel sx={LABEL_SX}>Source Language</InputLabel>
-              <Select value={sourceLanguage} label="Source Language" onChange={e => dispatch(setSourceLanguage(e.target.value))} sx={SELECT_SX}>
-                {SUPPORTED_LANGUAGES.map(l => <MenuItem key={l.value} value={l.value} sx={{ color: '#111111', '&:hover': { color: '#f59e0b' } }}>{l.label}</MenuItem>)}
+              <Select value={toIso6393(sourceLanguage) || sourceLanguage} label="Source Language" onChange={e => dispatch(setSourceLanguage(e.target.value))} MenuProps={TRANSLATE_MENU_PROPS} sx={SELECT_SX}>
+                {translateLanguageMenuItems()}
               </Select>
             </FormControl>
           </Grid>
@@ -149,8 +163,8 @@ const TranslationCard = () => {
           <Grid item xs={12} sm={5}>
             <FormControl fullWidth size="small">
               <InputLabel sx={LABEL_SX}>Target Language</InputLabel>
-              <Select value={targetLanguage} label="Target Language" onChange={e => dispatch(setTargetLanguage(e.target.value))} sx={SELECT_SX}>
-                {SUPPORTED_LANGUAGES.map(l => <MenuItem key={l.value} value={l.value} sx={{ color: '#111111', '&:hover': { color: '#f59e0b' } }}>{l.label}</MenuItem>)}
+              <Select value={toIso6393(targetLanguage) || targetLanguage} label="Target Language" onChange={e => dispatch(setTargetLanguage(e.target.value))} MenuProps={TRANSLATE_MENU_PROPS} sx={SELECT_SX}>
+                {translateLanguageMenuItems()}
               </Select>
             </FormControl>
           </Grid>

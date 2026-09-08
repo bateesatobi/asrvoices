@@ -74,8 +74,38 @@ export const API_GROUPS = [
   {
     id: 'transcription',
     title: 'Transcription',
-    description: 'Speech-to-text for uploaded audio, recordings, and video files.',
+    description: 'Speech-to-text for uploaded audio, recordings, live microphone, and video files. STT languages are ISO 639-3: ach, teo, eng, kin, lug, lgg, myx, xog, nyn, ttj, swa.',
     endpoints: [
+      {
+        id: 'asr-languages',
+        method: 'GET',
+        path: '/api/asr/languages',
+        summary: 'List speech-to-text languages',
+        description: 'Returns the Ateker STT catalog as `{ "languages": { "Luganda": "lug", ... } }`.',
+        responseExample: `{
+  "languages": {
+    "Acholi": "ach",
+    "English": "eng",
+    "Luganda": "lug",
+    "Swahili": "swa"
+  }
+}`,
+      },
+      {
+        id: 'realtime-transcribe',
+        method: 'WS',
+        path: '/api/realtime-transcribe',
+        summary: 'Live microphone transcription',
+        description: 'Browser sends raw PCM s16le frames. The API opens Ateker control + data sockets, wraps audio with `{sampleRate, language}` metadata, and forwards interim/final events.',
+        parameters: [
+          { name: 'language', type: 'query', required: false, description: 'ISO 639-3 STT code (default eng). Aliases such as en, lg, sw are remapped.' },
+          { name: 'sample_rate', type: 'query', required: false, description: 'PCM sample rate (default 16000).' },
+        ],
+        notes: [
+          'Binary frames: raw PCM. JSON text: set_language, set_parameter, abort, clear_audio_queue.',
+          'Events include realtime (interim) and fullSentence / is_final (committed).',
+        ],
+      },
       {
         id: 'upload-audio',
         method: 'POST',
@@ -84,7 +114,7 @@ export const API_GROUPS = [
         contentType: 'multipart/form-data',
         parameters: [
           { name: 'user_id', type: 'string', required: true, description: 'User identifier.' },
-          { name: 'source_lang', type: 'string', required: true, description: 'Language spoken in the media.' },
+          { name: 'source_lang', type: 'string', required: true, description: 'Spoken language as ISO 639-3 (eng, lug, swa, …).' },
           { name: 'audio_file', type: 'file', required: true, description: 'Audio or video file.' },
           { name: 'response_format', type: 'string', required: false, description: 'json | text | srt | verbose_json (default: json).' },
           { name: 'background', type: 'boolean', required: false, description: 'If true, returns immediately with status processing.' },
@@ -118,7 +148,7 @@ export const API_GROUPS = [
         contentType: 'multipart/form-data',
         parameters: [
           { name: 'user_id', type: 'string', required: true, description: 'User identifier.' },
-          { name: 'source_lang', type: 'string', required: true, description: 'Spoken language in the video.' },
+          { name: 'source_lang', type: 'string', required: true, description: 'Spoken language as ISO 639-3 (eng, lug, swa, …).' },
           { name: 'youtube_link', type: 'file', required: true, description: 'Video file upload field name used by the API.' },
           { name: 'response_format', type: 'string', required: false, description: 'Transcript format.' },
           { name: 'background', type: 'boolean', required: false, description: 'Async processing flag.' },

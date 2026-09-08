@@ -78,8 +78,8 @@ export const translateDocument = createAsyncThunk(
 );
 
 const initialState = {
-  sourceLanguage: 'en',
-  targetLanguage: 'lg',
+  sourceLanguage: 'eng',
+  targetLanguage: 'lug',
   inputText: '',
   translatedText: '',
   selectedFile: null,

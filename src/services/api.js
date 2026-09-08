@@ -15,6 +15,15 @@ export const BASE_URL = (
 /** API-proxied playback for studio videos (fixes R2 missing Content-Type / CORS). */
 export const studioPlaybackUrl = (kind, docId) =>
   docId ? `${BASE_URL}/api/studio/${kind}/${docId}/play` : null;
+
+export function realtimeTranscribeWsUrl(language = 'eng', sampleRate = 16000) {
+  const wsBase = BASE_URL.replace(/^http/i, 'ws');
+  const params = new URLSearchParams({
+    language,
+    sample_rate: String(sampleRate),
+  });
+  return `${wsBase}/api/realtime-transcribe?${params.toString()}`;
+}
 const REQUEST_TIMEOUT = 0; // Disabled timeouts for sync operations
 const LONG_REQUEST_TIMEOUT = 0; // Disabled timeouts for long operations
 
@@ -321,6 +330,13 @@ export const transcriptionAPI = {
     });
     return response.data;
   },
+
+  getLanguages: async () => {
+    const response = await apiClient.get('/api/asr/languages');
+    return response.data;
+  },
+
+  realtimeWsUrl: realtimeTranscribeWsUrl,
 };
 
 /**

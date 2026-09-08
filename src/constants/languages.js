@@ -1,3 +1,22 @@
+export {
+  TRANSLATE_LANGUAGES,
+  TRANSLATE_LANGUAGE_CATALOG,
+  toIso6393,
+  getTranslateLanguage,
+  getTranslateLanguageLabel,
+  DEFAULT_SOURCE_LANG,
+  DEFAULT_TARGET_LANG,
+} from './translateLanguages';
+
+export {
+  ASR_LANGUAGES,
+  ASR_LANGUAGE_CATALOG,
+  ASR_LANG_CODES,
+  DEFAULT_ASR_LANG,
+  toAsrLang,
+  getAsrLanguageLabel,
+} from './asrLanguages';
+
 export const LANGUAGES = [
   { value: 'en', label: 'English' },
   { value: 'lg', label: 'Luganda' },

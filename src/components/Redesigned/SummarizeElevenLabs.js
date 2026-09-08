@@ -21,7 +21,7 @@ import {
 import StudioPageShell from '../Layout/StudioPageShell';
 import StudioHistorySection from '../Layout/StudioHistorySection';
 import { summarizationAPI, getFriendlyErrorMessage } from '../../services/api';
-import { LANGUAGES } from '../../constants/languages';
+import { ASR_LANGUAGES, DEFAULT_ASR_LANG } from '../../constants/asrLanguages';
 import useStudioUser from '../../hooks/useStudioUser';
 import { StudioJobProgressBar } from '../progress';
 import { STUDIO_VISUALS } from '../../data/studioVisuals';
@@ -65,7 +65,7 @@ export default function SummarizeElevenLabs() {
   const { userId, balance, refreshBalance } = useStudioUser();
 
   const [inputMode, setInputMode] = useState(0);
-  const [sourceLanguage, setSourceLanguage] = useState('en');
+  const [sourceLanguage, setSourceLanguage] = useState(DEFAULT_ASR_LANG);
   const [textContent, setTextContent] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
   const [summaryLength, setSummaryLength] = useState('250');
@@ -140,7 +140,7 @@ export default function SummarizeElevenLabs() {
           label="Source language"
           value={sourceLanguage}
           onChange={(e) => setSourceLanguage(e.target.value)}
-          options={LANGUAGES.map((l) => ({ value: l.value, label: l.label }))}
+          options={ASR_LANGUAGES}
         />
         <SettingSelect
           label="Length (word_count)"

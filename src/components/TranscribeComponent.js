@@ -13,7 +13,8 @@ import {
 } from '@mui/icons-material';
 import { useMediaQuery, useTheme } from '@mui/material';
 import { transcriptionAPI, subscriptionAPI, getFriendlyErrorMessage } from '../services/api';
-import { LANGUAGES } from '../constants/languages';
+import { ASR_LANGUAGES, DEFAULT_ASR_LANG, getAsrLanguageLabel } from '../constants/asrLanguages';
+import LiveTranscribePanel from './Redesigned/LiveTranscribePanel';
 import ViewAudioComponent from './ViewAudioComponent';
 import UpgradePromptModal from './UpgradePromptModal';
 import { AC, G, GLASS, STEPPER_SX } from '../utils/mediaVault';
@@ -89,7 +90,7 @@ export default function TranscribeComponent() {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [tab, setTab] = useState(0);
   const [activeStep, setActiveStep] = useState(0);
-  const [sourceLang, setSourceLang] = useState('en');
+  const [sourceLang, setSourceLang] = useState(DEFAULT_ASR_LANG);
   const [responseFormat, setResponseFormat] = useState('json');
   const [file, setFile] = useState(null);
   const [blob, setBlob] = useState(null);
@@ -128,8 +129,8 @@ export default function TranscribeComponent() {
   const getUser = () => JSON.parse(localStorage.getItem('user') || '{}');
   const isLowBalance = false; // balance check handled server-side
 
-  const tabLabels = ['Upload File', 'Record Audio'];
-  const hasContent = tab === 0 ? !!file : !!blob;
+  const tabLabels = ['Upload File', 'Record Audio', 'Live microphone'];
+  const hasContent = tab === 0 ? !!file : tab === 1 ? !!blob : true;
 
   useEffect(() => {
     const user = getUser();
@@ -376,6 +377,7 @@ export default function TranscribeComponent() {
           {[
             { label: 'Upload', icon: <CloudUpload sx={{ fontSize: 18 }} /> },
             { label: 'Record', icon: <Mic sx={{ fontSize: 18 }} /> },
+            { label: 'Live', icon: <SettingsVoice sx={{ fontSize: 18 }} /> },
           ].map(({ label, icon }, i) => (
             <Tab 
               key={i} 
@@ -399,6 +401,17 @@ export default function TranscribeComponent() {
         </Tabs>
       </Box>
 
+      {tab === 2 ? (
+        <Paper elevation={0} sx={{ p: 3, mb: 2, ...GLASS }}>
+          <FormControl fullWidth size="small" sx={{ mb: 2, maxWidth: 360 }}>
+            <InputLabel sx={LABEL_SX}>Source Language</InputLabel>
+            <Select value={sourceLang} label="Source Language" onChange={e => setSourceLang(e.target.value)} sx={SELECT_SX}>
+              {ASR_LANGUAGES.map(l => <MenuItem key={l.value} value={l.value}>{l.label}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <LiveTranscribePanel language={sourceLang} />
+        </Paper>
+      ) : (
       <Stepper data-tour="studio-flow" activeStep={activeStep} orientation="vertical" sx={STEPPER_SX}>
 
         <Step>
@@ -427,7 +440,7 @@ export default function TranscribeComponent() {
                   <FormControl fullWidth size="small">
                     <InputLabel sx={LABEL_SX}>Source Language</InputLabel>
                     <Select value={sourceLang} label="Source Language" onChange={e => setSourceLang(e.target.value)} sx={SELECT_SX}>
-                      {LANGUAGES.map(l => <MenuItem key={l.value} value={l.value}>{l.label}</MenuItem>)}
+                      {ASR_LANGUAGES.map(l => <MenuItem key={l.value} value={l.value}>{l.label}</MenuItem>)}
                     </Select>
                   </FormControl>
                 </Grid>
@@ -458,7 +471,7 @@ export default function TranscribeComponent() {
             <Paper elevation={0} sx={{ p: 3, mb: 2, ...GLASS, mt: 1 }}>
               <Stack spacing={1.5} sx={{ p: 2, background: 'rgba(232,160,32,0.05)', borderRadius: '12px', border: `1px solid ${AC}30`, mb: 2 }}>
                 <Typography sx={{ fontSize: '0.8rem', color: '#111111' }}><strong>Mode:</strong> {tabLabels[tab]}</Typography>
-                <Typography sx={{ fontSize: '0.8rem', color: '#111111' }}><strong>Language:</strong> {LANGUAGES.find(l => l.value === sourceLang)?.label || sourceLang}</Typography>
+                <Typography sx={{ fontSize: '0.8rem', color: '#111111' }}><strong>Language:</strong> {getAsrLanguageLabel(sourceLang)}</Typography>
                 <Typography sx={{ fontSize: '0.8rem', color: '#111111' }}><strong>Format:</strong> {FORMAT_OPTIONS.find(f => f.value === responseFormat)?.label}</Typography>
                 {tab === 0 && file && <Typography sx={{ fontSize: '0.8rem', color: '#111111' }}><strong>File:</strong> {file.name}</Typography>}
                 {tab === 1 && blob && <Typography sx={{ fontSize: '0.8rem', color: '#111111' }}><strong>Recording:</strong> Ready</Typography>}
@@ -522,6 +535,7 @@ export default function TranscribeComponent() {
         </Step>
 
       </Stepper>
+      )}
 
       <Snackbar open={snack.open} autoHideDuration={5000} onClose={() => setSnack(s => ({ ...s, open: false }))} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
         <Alert severity={snack.sev} variant="filled" onClose={() => setSnack(s => ({ ...s, open: false }))} sx={{ borderRadius: '12px' }}>{snack.msg}</Alert>

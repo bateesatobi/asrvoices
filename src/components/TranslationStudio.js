@@ -3,7 +3,7 @@ import {
   Box, Button, FormControl, Grid, IconButton, MenuItem,
   Select, TextField, Alert, Stack, Chip,
   Typography, Tooltip, Menu, Tab, Tabs,
-  Stepper, Step, StepLabel, StepContent, Paper,
+  Stepper, Step, StepLabel, StepContent, Paper, ListSubheader,
 } from '@mui/material';
 import {
   Translate, CloudUpload, SwapHoriz,
@@ -17,6 +17,7 @@ import {
 } from '../store/slices/translationSlice';
 import { translationAPI, subscriptionAPI, BASE_URL, getFriendlyErrorMessage } from '../services/api';
 import { AC, G, GLASS, STEPPER_SX } from '../utils/mediaVault';
+import { TRANSLATE_LANGUAGES, getTranslateLanguageLabel, toIso6393 } from '../constants/translateLanguages';
 import CreditEstimateChip from './CreditEstimateChip';
 import { AvoicesJobProgress } from './progress';
 import SendToStudioButton from './SendToStudioButton';
@@ -24,14 +25,24 @@ import { consumePipeline } from '../utils/pipelineHandoff';
 import { useStudioTour } from './onboarding';
 import { TOUR_IDS, translateTour } from './onboarding/tours';
 
-const SUPPORTED_LANGUAGES = [
-  { value: 'en', label: 'English' },
-  { value: 'lg', label: 'Luganda' },
-  { value: 'sw', label: 'Kiswahili' },
-  { value: 'ac', label: 'Acholi' },
-  { value: 'at', label: 'Ateso' },
-  { value: 'nyn', label: 'Runyankore' },
-];
+const TRANSLATE_MENU_PROPS = { PaperProps: { sx: { maxHeight: 360 } } };
+
+function translateLanguageMenuItems() {
+  const items = [];
+  let lastGroup = null;
+  TRANSLATE_LANGUAGES.forEach((lang) => {
+    if (lang.group && lang.group !== lastGroup) {
+      lastGroup = lang.group;
+      items.push(
+        <ListSubheader key={`group-${lastGroup}`} sx={{ fontWeight: 800, fontSize: '0.7rem' }}>
+          {lastGroup}
+        </ListSubheader>
+      );
+    }
+    items.push(<MenuItem key={lang.value} value={lang.value}>{lang.label}</MenuItem>);
+  });
+  return items;
+}
 
 function StepNav({ onBack, onNext, backDisabled, nextDisabled, nextLabel = 'Next' }) {
   return (
@@ -85,8 +96,10 @@ const TranslationStudio = () => {
     if (!handoff) return;
     setActiveTab(0);
     if (handoff.text) dispatch(setInputText(String(handoff.text)));
-    const langs = SUPPORTED_LANGUAGES.map(l => l.value);
-    if (handoff.sourceLang && langs.includes(handoff.sourceLang)) dispatch(setSourceLanguage(handoff.sourceLang));
+    const langs = TRANSLATE_LANGUAGES.map(l => l.value);
+    if (handoff.sourceLang && langs.includes(toIso6393(handoff.sourceLang) || handoff.sourceLang)) {
+      dispatch(setSourceLanguage(toIso6393(handoff.sourceLang) || handoff.sourceLang));
+    }
     if (handoff.text) {
       setSuccessMsg('Text imported from your previous step — pick a target language and translate.');
       setActiveStep(2);
@@ -183,12 +196,12 @@ const TranslationStudio = () => {
     try {
       if (selectedFile && !isTextMode) {
         const result = await dispatch(translateDocument({
-          userId: user.userId, sourceLang: sourceLanguage, targetLang: targetLanguage, file: selectedFile,
+          userId: user.userId, sourceLang: toIso6393(sourceLanguage) || sourceLanguage, targetLang: toIso6393(targetLanguage) || targetLanguage, file: selectedFile,
         })).unwrap();
         if (result.status === 'started') setStreamingActive(true);
       } else if (inputText.trim()) {
         const result = await dispatch(translateText({
-          userId: user.userId, sourceLang: sourceLanguage, targetLang: targetLanguage, text: inputText,
+          userId: user.userId, sourceLang: toIso6393(sourceLanguage) || sourceLanguage, targetLang: toIso6393(targetLanguage) || targetLanguage, text: inputText,
         })).unwrap();
         if (result.status === 'started') {
           setStreamingActive(true);
@@ -237,8 +250,8 @@ const TranslationStudio = () => {
     }
   };
 
-  const sourceLangLabel = SUPPORTED_LANGUAGES.find(l => l.value === sourceLanguage)?.label;
-  const targetLangLabel = SUPPORTED_LANGUAGES.find(l => l.value === targetLanguage)?.label;
+  const sourceLangLabel = getTranslateLanguageLabel(sourceLanguage);
+  const targetLangLabel = getTranslateLanguageLabel(targetLanguage);
 
   return (
     <Box sx={{ p: { xs: 1.5, md: 3 }, minHeight: '100vh', background: 'transparent', maxWidth: 1200, mx: 'auto' }}>
@@ -302,14 +315,14 @@ const TranslationStudio = () => {
             <Paper elevation={0} sx={{ p: 3, mb: 2, ...GLASS, mt: 1 }}>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
                 <FormControl size="small" sx={{ minWidth: 180, flex: 1 }}>
-                  <Select value={sourceLanguage} onChange={e => dispatch(setSourceLanguage(e.target.value))} sx={{ borderRadius: '12px', color: '#111111' }}>
-                    {SUPPORTED_LANGUAGES.map(l => <MenuItem key={l.value} value={l.value}>{l.label}</MenuItem>)}
+                  <Select value={toIso6393(sourceLanguage) || sourceLanguage} onChange={e => dispatch(setSourceLanguage(e.target.value))} MenuProps={TRANSLATE_MENU_PROPS} sx={{ borderRadius: '12px', color: '#111111' }}>
+                    {translateLanguageMenuItems()}
                   </Select>
                 </FormControl>
                 <IconButton onClick={swapLanguages} sx={{ color: AC, background: 'rgba(232,160,32,0.08)' }}><SwapHoriz /></IconButton>
                 <FormControl size="small" sx={{ minWidth: 180, flex: 1 }}>
-                  <Select value={targetLanguage} onChange={e => dispatch(setTargetLanguage(e.target.value))} sx={{ borderRadius: '12px', color: '#111111' }}>
-                    {SUPPORTED_LANGUAGES.map(l => <MenuItem key={l.value} value={l.value}>{l.label}</MenuItem>)}
+                  <Select value={toIso6393(targetLanguage) || targetLanguage} onChange={e => dispatch(setTargetLanguage(e.target.value))} MenuProps={TRANSLATE_MENU_PROPS} sx={{ borderRadius: '12px', color: '#111111' }}>
+                    {translateLanguageMenuItems()}
                   </Select>
                 </FormControl>
               </Stack>

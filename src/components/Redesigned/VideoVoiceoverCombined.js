@@ -32,6 +32,7 @@ import CreditEstimateChip from '../CreditEstimateChip';
 import { dataAPI } from '../../services/api';
 import { NEURAL_LANGUAGES, NEURAL_SPEAKERS } from '../../constants/neural_config';
 import { LANGUAGES } from '../../constants/languages';
+import { ASR_LANGUAGES, DEFAULT_ASR_LANG } from '../../constants/asrLanguages';
 import StudioHeroBanner from '../Layout/StudioHeroBanner';
 import { STUDIO_VISUALS } from '../../data/studioVisuals';
 
@@ -68,7 +69,7 @@ export default function VideoVoiceoverCombined({ userId }) {
   const [dubbingInputTab, setDubbingInputTab] = useState(0);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [youtubeUrl, setYoutubeUrl] = useState('');
-  const [sourceLanguage, setSourceLanguage] = useState('en');
+  const [sourceLanguage, setSourceLanguage] = useState(DEFAULT_ASR_LANG);
   const [targetLanguages, setTargetLanguages] = useState(['lg']);
   const [selectedVoice, setSelectedVoice] = useState(NEURAL_SPEAKERS[0]?.id);
   const [currentVideo, setCurrentVideo] = useState(null);
@@ -439,7 +440,7 @@ export default function VideoVoiceoverCombined({ userId }) {
             fullWidth
             size="small"
           >
-            {LANGUAGES.map((lang) => (
+            {ASR_LANGUAGES.map((lang) => (
               <MenuItem key={lang.value} value={lang.value}>
                 {lang.label}
               </MenuItem>

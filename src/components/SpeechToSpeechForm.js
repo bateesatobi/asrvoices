@@ -6,6 +6,7 @@ import {
 import { CloudUpload, Send, CheckCircle } from '@mui/icons-material';
 import { voiceToVoiceAPI, subscriptionAPI, getFriendlyErrorMessage } from '../services/api';
 import { LANGUAGES } from '../constants/languages';
+import { ASR_LANGUAGES, DEFAULT_ASR_LANG } from '../constants/asrLanguages';
 import ViewVoxComponent from './ViewVoxComponent';
 import { ActivityStrip, AvoicesBackdropLoader } from './progress';
 
@@ -23,7 +24,7 @@ const LABEL_SX = { color: 'rgba(17, 17, 17, 0.5)', '&.Mui-focused': { color: '#E
 const VOICE_TO_VOICE_RATE = 2;
 
 export default function SpeechToSpeechForm() {
-  const [sourceLang, setSourceLang] = useState('en');
+  const [sourceLang, setSourceLang] = useState(DEFAULT_ASR_LANG);
   const [targetLangs, setTargetLangs] = useState([]);
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -110,7 +111,7 @@ export default function SpeechToSpeechForm() {
           <FormControl fullWidth size="small">
             <InputLabel sx={LABEL_SX}>Source Language</InputLabel>
             <Select value={sourceLang} label="Source Language" onChange={e => setSourceLang(e.target.value)} sx={SELECT_SX}>
-              {LANGUAGES.map(l => <MenuItem key={l.value} value={l.value} sx={{ color: '#111111', '&:hover': { color: '#E8A020' } }}>{l.label}</MenuItem>)}
+              {ASR_LANGUAGES.map(l => <MenuItem key={l.value} value={l.value} sx={{ color: '#111111', '&:hover': { color: '#E8A020' } }}>{l.label}</MenuItem>)}
             </Select>
           </FormControl>
         </Grid>

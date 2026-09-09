@@ -114,7 +114,7 @@ const RecordAudioComponent = () => {
     } catch (error) {
       const errorInfo = handleAPIError(error, 'upload_recorded_audio');
       if (errorInfo.shouldUpgrade) {
-        setBannerMessage('Please upgrade your subscription to continue');
+        setBannerMessage('Buy credits to continue — your wallet balance is too low.');
         window.dispatchEvent(new CustomEvent('show-upgrade-modal', { detail: { message: errorInfo.message } }));
       } else {
         setBannerMessage(errorInfo.message || 'Upload failed. Please try again.');

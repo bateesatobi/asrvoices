@@ -22,6 +22,7 @@ import {
   Stack,
   Snackbar,
   Alert,
+  Modal,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -36,9 +37,10 @@ import {
   FlashOn as FlashIcon,
 } from '@mui/icons-material';
 import { styled, keyframes } from '@mui/material/styles';
-import { PLANS } from '../constants/plans';
+import { CREDIT_PACKS, catalogPacksToUi } from '../constants/plans';
 import { AvoicesProgress } from './progress';
-import PaymentModal from './PaymentModal';
+import PesapalCheckoutForm from './PesapalCheckoutForm';
+import { subscriptionAPI, getCurrentUser } from '../services/api';
 
 const toDisplayTier = (plan) => ({
   ...plan,
@@ -48,7 +50,7 @@ const toDisplayTier = (plan) => ({
     .map((f) => f.label),
 });
 
-const PAID_PLANS = PLANS.filter((p) => p.id !== 'free_trial').map(toDisplayTier);
+const PAID_PLANS = CREDIT_PACKS.filter((p) => p.monthlyRaw).map(toDisplayTier);
 
 // Enhanced animations
 const shimmer = keyframes`
@@ -138,10 +140,7 @@ const FloatingIcon = styled(Box)(({ theme }) => ({
 
 const UpgradePromptModal = () => {
   const [open, setOpen] = useState(false);
-  const [currentUsage] = useState(0);
-  const [limit] = useState(0);
   const [endpoint, setEndpoint] = useState('');
-  const [tier] = useState('free_trial');
 
   const [pricingTiers, setPricingTiers] = useState(PAID_PLANS);
   const [isLoading, setIsLoading] = useState(false);
@@ -150,37 +149,39 @@ const UpgradePromptModal = () => {
   );
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [successSnack, setSuccessSnack] = useState({ open: false, message: '' });
+  const user = getCurrentUser();
+  const userId = user.userId || user.uid;
 
   const onClose = () => setOpen(false);
 
   useEffect(() => {
     const handleLimitExceeded = (e) => {
       setOpen(true);
-      setEndpoint(e.detail?.endpoint || '');
+      setEndpoint(e.detail?.endpoint || e.detail?.message || '');
     };
     window.addEventListener('subscription-limit-exceeded', handleLimitExceeded);
-    return () => window.removeEventListener('subscription-limit-exceeded', handleLimitExceeded);
+    window.addEventListener('show-upgrade-modal', handleLimitExceeded);
+    return () => {
+      window.removeEventListener('subscription-limit-exceeded', handleLimitExceeded);
+      window.removeEventListener('show-upgrade-modal', handleLimitExceeded);
+    };
   }, []);
 
   const loadPricingTiers = useCallback(() => {
     setIsLoading(true);
-    const allTiers = PLANS.map(toDisplayTier);
-    const paid = allTiers.filter((p) => p.id !== 'free_trial');
-    setPricingTiers(paid);
-
-    const currentTierIndex = allTiers.findIndex((t) => t.id === tier);
-    const nextTier =
-      currentTierIndex >= 0 && currentTierIndex < allTiers.length - 1
-        ? allTiers[currentTierIndex + 1]
-        : paid.find((p) => p.popular) || paid[0];
-
-    if (nextTier && nextTier.id !== 'free_trial') {
-      setSelectedTier(nextTier);
-    } else {
-      setSelectedTier(paid.find((p) => p.popular) || paid[0] || null);
-    }
-    setIsLoading(false);
-  }, [tier]);
+    subscriptionAPI.getBillingCatalog()
+      .then((catalog) => {
+        const mapped = catalogPacksToUi(catalog).map(toDisplayTier);
+        const paid = mapped.length ? mapped : PAID_PLANS;
+        setPricingTiers(paid);
+        setSelectedTier(paid.find((p) => p.popular) || paid[0] || null);
+      })
+      .catch(() => {
+        setPricingTiers(PAID_PLANS);
+        setSelectedTier(PAID_PLANS.find((p) => p.popular) || PAID_PLANS[0] || null);
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -199,25 +200,11 @@ const UpgradePromptModal = () => {
     setShowPaymentModal(true);
   };
 
-  const handlePaymentSuccess = (upgradedTier) => {
-    setShowPaymentModal(false);
-    setSuccessSnack({
-      open: true,
-      message: `Successfully upgraded to ${upgradedTier?.title || 'new plan'}! Your subscription is now active.`,
-    });
-    // Close the upgrade modal after a brief moment so user sees the success
-    setTimeout(() => onClose(), 3000);
-  };
-
-  const getUsagePercentage = () => {
-    return limit > 0 ? Math.round((currentUsage / limit) * 100) : 0;
-  };
-
   const getTierIcon = (tierId) => {
     switch (tierId) {
-      case 'free_trial': return <StarIcon />;
-      case 'classic': return <RocketIcon />;
-      case 'classic_pro': return <DiamondIcon />;
+      case 'starter': return <StarIcon />;
+      case 'studio': return <RocketIcon />;
+      case 'pro': return <DiamondIcon />;
       case 'enterprise_plus': return <FlashIcon />;
       default: return <UpgradeIcon />;
     }
@@ -225,9 +212,9 @@ const UpgradePromptModal = () => {
 
   const getTierColor = (tierId) => {
     switch (tierId) {
-      case 'free_trial': return '#9e9e9e';
-      case 'classic': return '#f59e0b';
-      case 'classic_pro': return '#d97706';
+      case 'starter': return '#64748b';
+      case 'studio': return '#f59e0b';
+      case 'pro': return '#10b981';
       case 'enterprise_plus': return '#b45309';
       default: return '#f59e0b';
     }
@@ -259,10 +246,10 @@ const UpgradePromptModal = () => {
                 </FloatingIcon>
                 <Box>
                   <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
-                    🚀 Upgrade Your Plan
+                    🚀 Top up credits
                   </Typography>
                   <Typography variant="h6" sx={{ opacity: 0.9 }}>
-                    Unlock unlimited potential with premium features
+                    Jobs need a wallet balance before they start
                   </Typography>
                 </Box>
               </Box>
@@ -279,29 +266,23 @@ const UpgradePromptModal = () => {
               </IconButton>
             </Box>
             
-            {/* Usage Status */}
+            {/* Wallet status */}
             <Paper sx={{ 
               bgcolor: 'rgba(17, 17, 17, 0.1)', 
               p: 3, 
               borderRadius: '16px',
               backdropFilter: 'blur(10px)'
             }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  Current Usage: {endpoint}
-                </Typography>
-                <Chip 
-                  label={`${currentUsage}/${limit}`} 
-                  sx={{ 
-                    bgcolor: 'rgba(17, 17, 17, 0.2)', 
-                    color: '#111111',
-                    fontWeight: 600
-                  }} 
-                />
-              </Box>
-              <AvoicesProgress variant="determinate" value={getUsagePercentage()} size="md" tone="quota" showValue />
-              <Typography variant="body2" sx={{ mt: 1, opacity: 0.8 }}>
-                {getUsagePercentage()}% of your monthly limit used
+              <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+                Wallet needs credits
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.85, mb: 1 }}>
+                {endpoint
+                  ? `This action (${endpoint}) could not start because your balance is too low.`
+                  : 'This action could not start because your balance is too low.'}
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                Buy a one-time credit pack below. Credits never expire, and failed jobs are refunded.
               </Typography>
             </Paper>
           </Box>
@@ -310,7 +291,7 @@ const UpgradePromptModal = () => {
 
       <DialogContent sx={{ p: 4 }}>
         <Typography variant="h5" sx={{ mb: 3, fontWeight: 600, textAlign: 'center' }}>
-          Choose Your Perfect Plan
+          Choose a credit pack
         </Typography>
 
         {isLoading ? (
@@ -385,7 +366,7 @@ const UpgradePromptModal = () => {
         {/* Benefits Section */}
         <Box sx={{ mt: 4, p: 3, bgcolor: 'rgba(245, 158, 11, 0.05)', borderRadius: '16px' }}>
           <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, textAlign: 'center' }}>
-            🎯 Why Upgrade?
+            🎯 Why credits?
           </Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} md={4}>
@@ -456,18 +437,33 @@ const UpgradePromptModal = () => {
               size="large"
               startIcon={<RocketIcon />}
             >
-              {selectedTier?.monthly === 'Custom' ? 'Contact Sales' : 'Upgrade Now'}
+              {selectedTier?.monthly === 'Custom' ? 'Contact Sales' : 'Buy credits'}
             </UpgradeButton>
           </Stack>
         </Box>
       </DialogActions>
       
-      <PaymentModal
+      <Modal
         open={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
-        selectedTier={selectedTier}
-        onPaymentSuccess={handlePaymentSuccess}
-      />
+        sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2 }}
+      >
+        <Box sx={{
+          width: { xs: '95%', sm: 500 }, maxHeight: '90vh', overflow: 'auto',
+          background: '#ffffff', borderRadius: '24px', outline: 'none',
+          boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)',
+        }}>
+          {selectedTier && (
+            <PesapalCheckoutForm
+              amount={Number(selectedTier.monthlyRaw || selectedTier.price || 0)}
+              tier={selectedTier.title}
+              tierId={selectedTier.id}
+              userId={userId}
+              onClose={() => setShowPaymentModal(false)}
+            />
+          )}
+        </Box>
+      </Modal>
 
       <Snackbar
         open={successSnack.open}

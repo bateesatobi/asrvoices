@@ -78,9 +78,10 @@ export default function ElevenLabsStyleTopBar({ isMobile, toggleDrawer }) {
     voiceovers: 'Voiceovers',
     history: 'History',
     usage: 'Usage Analytics',
+    'api-keys': 'API Keys',
     'api-reference': 'API Reference',
     'lang-support': 'Languages',
-    subscription: 'Subscription',
+    subscription: 'Credits',
     profile: 'Profile',
     'contact-support': 'Support',
   };

@@ -3,6 +3,7 @@ import { Box, Avatar, Typography, Button, Container, Divider, Chip, IconButton, 
 import { Mail, User, Calendar, Settings, LogOut, Star, Edit } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
+import { subscriptionAPI } from '../services/api';
 
 const G = 'linear-gradient(135deg, #f59e0b, #d97706)';
 const GOLD = '#f59e0b';
@@ -13,10 +14,20 @@ const ProfileComponent = () => {
   const { logout } = useAuth();
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [creditBalance, setCreditBalance] = useState(null);
 
   useEffect(() => {
     const stored = localStorage.getItem('user');
-    if (stored) setUser(JSON.parse(stored));
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      setUser(parsed);
+      const userId = parsed.uid || parsed.userId;
+      if (userId) {
+        subscriptionAPI.getBalance(userId)
+          .then((res) => setCreditBalance(res.balance ?? 0))
+          .catch(() => setCreditBalance(null));
+      }
+    }
     setIsLoading(false);
   }, []);
 
@@ -79,7 +90,11 @@ const ProfileComponent = () => {
                 {user.username || user.email || 'User'}
               </Typography>
               <Typography sx={{ color: 'rgba(17, 17, 17, 0.7)', fontSize: '0.9rem' }}>{user.email || ''}</Typography>
-              <Chip label="Free Plan" size="small" sx={{ mt: 1, background: 'rgba(245,158,11,0.15)', color: GOLD, border: `1px solid rgba(245,158,11,0.4)`, fontWeight: 700, fontSize: '0.72rem', borderRadius: '50px' }} />
+              <Chip
+                label={creditBalance != null ? `${Number(creditBalance).toLocaleString()} credits` : 'Pay as you go'}
+                size="small"
+                sx={{ mt: 1, background: 'rgba(245,158,11,0.15)', color: GOLD, border: `1px solid rgba(245,158,11,0.4)`, fontWeight: 700, fontSize: '0.72rem', borderRadius: '50px' }}
+              />
             </Box>
           </Box>
         </Box>
@@ -118,32 +133,36 @@ const ProfileComponent = () => {
           }}>
             <Box>
               <Typography sx={{ color: '#111111', fontWeight: 700, fontSize: '1rem', mb: 0.5 }}>
-                ✨ Upgrade to Professional
+                Buy credits
               </Typography>
               <Typography sx={{ color: '#64748b', fontSize: '0.88rem' }}>
-                Unlock unlimited processing, priority support, and custom voice models.
+                Pay as you go. Credits never expire and unused job credits are refunded.
               </Typography>
             </Box>
-            <Button startIcon={<Star size={16} />} sx={{
+            <Button startIcon={<Star size={16} />}
+              onClick={() => navigate('/dashboard/subscription')}
+              sx={{
               background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#000',
               fontWeight: 700, borderRadius: '50px', px: 3, py: 1.1, fontSize: '0.88rem', flexShrink: 0,
               boxShadow: '0 4px 16px rgba(245,158,11,0.35)',
               '&:hover': { boxShadow: '0 6px 24px rgba(245,158,11,0.5)', transform: 'translateY(-1px)' },
             }}>
-              Upgrade Now
+              Buy credits
             </Button>
           </Box>
         </Box>
 
         {/* Actions */}
         <Box sx={{ px: { xs: 3, md: 6 }, pb: 4, display: 'flex', justifyContent: 'flex-end', gap: 1.5 }}>
-          <Button startIcon={<Settings size={16} />} sx={{
+          <Button startIcon={<Settings size={16} />}
+            onClick={() => navigate('/dashboard/api-keys')}
+            sx={{
             borderRadius: '50px', px: 2.5, py: 1, fontWeight: 600, fontSize: '0.88rem',
             borderColor: 'rgba(17, 17, 17, 0.1)', color: 'rgba(17, 17, 17, 0.6)',
             border: '1px solid rgba(17, 17, 17, 0.1)',
             '&:hover': { background: 'rgba(17, 17, 17, 0.05)', borderColor: 'rgba(17, 17, 17, 0.2)', color: '#111111' },
           }}>
-            Settings
+            API Keys
           </Button>
           <Button startIcon={<LogOut size={16} />}
             onClick={async () => {

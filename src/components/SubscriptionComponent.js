@@ -10,7 +10,7 @@ import {
 import { keyframes } from '@mui/material/styles';
 import { subscriptionAPI } from '../services/api';
 import PesapalCheckoutForm from './PesapalCheckoutForm';
-import { PLANS, PLAN_COLORS } from '../constants/plans';
+import { CREDIT_PACKS, PLAN_COLORS, catalogPacksToUi } from '../constants/plans';
 
 // ── Animations ─────────────────────────────────────────────────────────────
 const fadeUp = keyframes`
@@ -26,9 +26,9 @@ const G = 'linear-gradient(135deg, #E8A020, #C47F10)';
 const GOLD = '#f59e0b';
 
 const PLAN_ICONS = {
-  'Free Trial':      <Lock sx={{ fontSize: 22 }} />,
-  'Classic':         <WorkspacePremium sx={{ fontSize: 22 }} />,
-  'Classic Pro':     <Diamond sx={{ fontSize: 22 }} />,
+  'Starter':         <Lock sx={{ fontSize: 22 }} />,
+  'Studio':          <WorkspacePremium sx={{ fontSize: 22 }} />,
+  'Pro':             <Diamond sx={{ fontSize: 22 }} />,
   'Enterprise Plus': <Workspaces sx={{ fontSize: 22 }} />,
 };
 
@@ -114,7 +114,7 @@ function PlanCard({ plan, onSubscribe, index }) {
             {PLAN_ICONS[plan.title] || <Diamond sx={{ fontSize: 22 }} />}
           </Box>
           {!isCustom && !isFree && (
-            <Chip label="Billed monthly" size="small" sx={{
+            <Chip label="One-time pack" size="small" sx={{
               background: 'rgba(17, 17, 17, 0.05)', border: '1px solid rgba(17, 17, 17, 0.08)',
               color: '#475569', fontWeight: 600, fontSize: '0.7rem', borderRadius: '50px',
             }} />
@@ -137,7 +137,7 @@ function PlanCard({ plan, onSubscribe, index }) {
                 {plan.monthly}
               </Typography>
               {!isFree && (
-                <Typography sx={{ color: '#475569', fontSize: '0.9rem', mb: 0.5 }}>/mo</Typography>
+                <Typography sx={{ color: '#475569', fontSize: '0.9rem', mb: 0.5 }}>one-time</Typography>
               )}
             </>
           )}
@@ -213,26 +213,33 @@ const SubscriptionComponent = () => {
   const [user, setUser] = useState({ username: '', userId: '' });
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentTier, setCurrentTier] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [creditBalance, setCreditBalance] = useState(null);
+  const [packs, setPacks] = useState(CREDIT_PACKS.filter((p) => p.monthlyRaw));
 
 
   useEffect(() => {
     const stored = localStorage.getItem('user');
-    if (stored) setUser(JSON.parse(stored));
-    loadCurrentTier();
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      setUser({ ...parsed, userId: parsed.uid || parsed.userId });
+    }
+    loadWallet();
   }, []);
 
-  const loadCurrentTier = async () => {
+  const loadWallet = async () => {
     try {
-
       const stored = JSON.parse(localStorage.getItem('user') || '{}');
-      if (stored.userId) {
-        const resp = await subscriptionAPI.getSubscription(stored.userId);
-        setCurrentTier(resp?.tier || 'free_trial');
-      }
-    } catch { setCurrentTier('free_trial'); }
-    finally { setIsLoading(false); }
+      const userId = stored.uid || stored.userId;
+      const [sub, catalog] = await Promise.all([
+        userId ? subscriptionAPI.getSubscription(userId).catch(() => null) : Promise.resolve(null),
+        subscriptionAPI.getBillingCatalog().catch(() => null),
+      ]);
+      if (sub && sub.credit_balance != null) setCreditBalance(Number(sub.credit_balance));
+      const mapped = catalogPacksToUi(catalog);
+      if (mapped.length) setPacks(mapped);
+    } catch {
+      setCreditBalance(null);
+    }
   };
 
   const handleSubscribe = (title, monthly, tierId) => {
@@ -259,7 +266,7 @@ const SubscriptionComponent = () => {
 
         {/* ── Header ─────────────────────────────────── */}
         <Box sx={{ textAlign: 'center', mb: 7, animation: `${fadeUp} 0.5s ease both` }}>
-          <Chip label="Choose Your Plan" size="small" sx={{
+          <Chip label="Pay as you go" size="small" sx={{
             background: `rgba(245,158,11,0.12)`, border: `1px solid rgba(245,158,11,0.3)`,
             color: GOLD, fontWeight: 700, borderRadius: '50px', mb: 2.5,
             '& .MuiChip-label': { px: 2 },
@@ -269,21 +276,20 @@ const SubscriptionComponent = () => {
             fontSize: { xs: '2rem', md: '2.8rem' },
             letterSpacing: '-0.03em', lineHeight: 1.1, mb: 1.5,
           }}>
-            Scale as you grow.{' '}
+            Buy credits.{' '}
             <Box component="span" sx={{ background: G, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
               Pay as you go.
             </Box>
           </Typography>
           <Typography sx={{ color: '#64748b', fontSize: '1rem', maxWidth: 480, mx: 'auto', lineHeight: 1.7 }}>
-            No hidden fees. Upgrade, downgrade, or cancel anytime.
+            Jobs need a credit balance to start. If a job fails, those credits are refunded automatically.
           </Typography>
 
-          {/* Current plan badge */}
-          {currentTier && (
+          {creditBalance != null && (
             <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, mt: 2.5, background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '50px', px: 2, py: 0.75 }}>
               <Box sx={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981' }} />
               <Typography sx={{ color: '#10b981', fontSize: '0.8rem', fontWeight: 700 }}>
-                Active plan: {currentTier === 'free_trial' ? 'Free Trial' : currentTier}
+                Wallet: {creditBalance.toLocaleString()} credits
               </Typography>
             </Box>
           )}
@@ -291,7 +297,7 @@ const SubscriptionComponent = () => {
 
         {/* ── Plan cards ─────────────────────────────── */}
         <Grid container spacing={3} justifyContent="center" alignItems="stretch" sx={{ mb: 7 }}>
-          {PLANS.map((plan, i) => (
+          {packs.map((plan, i) => (
             <Grid item xs={12} sm={6} md={3} key={plan.id}>
               <PlanCard plan={plan} onSubscribe={handleSubscribe} index={i} />
             </Grid>
@@ -306,9 +312,9 @@ const SubscriptionComponent = () => {
           borderBottom: '1px solid rgba(17, 17, 17, 0.05)',
         }}>
           {[
-            { icon: <VerifiedUser sx={{ fontSize: 16, color: '#10b981' }} />, text: 'Secure Stripe payments' },
-            { icon: <Bolt sx={{ fontSize: 16, color: '#E8A020' }} />, text: 'Instant activation' },
-            { icon: <Lock sx={{ fontSize: 16, color: '#C47F10' }} />, text: 'Cancel anytime' },
+            { icon: <VerifiedUser sx={{ fontSize: 16, color: '#10b981' }} />, text: 'Secure Pesapal payments' },
+            { icon: <Bolt sx={{ fontSize: 16, color: '#E8A020' }} />, text: 'Credits added on payment' },
+            { icon: <Lock sx={{ fontSize: 16, color: '#C47F10' }} />, text: 'Credits never expire' },
           ].map(({ icon, text }) => (
             <Box key={text} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               {icon}
@@ -354,7 +360,7 @@ const SubscriptionComponent = () => {
         </Box>
       </Container>
 
-      {/* ── Stripe checkout modal ─────────────────────── */}
+      {/* ── Pesapal checkout modal ─────────────────────── */}
       <Modal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -380,10 +386,10 @@ const SubscriptionComponent = () => {
           }}>
             <Box>
               <Typography sx={{ color: '#111111', fontWeight: 700, fontSize: '1.1rem' }}>
-                Upgrade to {selectedPlan?.title}
+                Buy {selectedPlan?.title} credits
               </Typography>
               <Typography sx={{ color: '#475569', fontSize: '0.82rem', mt: 0.25 }}>
-                {selectedPlan?.monthly}/month
+                {selectedPlan?.monthly} — one-time credit pack
               </Typography>
             </Box>
             <Box
@@ -405,7 +411,7 @@ const SubscriptionComponent = () => {
                 amount={getAmountInCents(selectedPlan.monthly) / 100}
                 tier={selectedPlan.title}
                 tierId={selectedPlan.tierId}
-                userId={user.userId}
+                userId={user.userId || user.uid}
                 onClose={() => setIsModalOpen(false)}
               />
             )}

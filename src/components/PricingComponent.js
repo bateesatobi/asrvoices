@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
-  Box, Typography, Grid, Container, Button, Chip, Switch,
+  Box, Typography, Grid, Container, Button, Chip,
   Accordion, AccordionSummary, AccordionDetails, Divider,
 } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
@@ -27,9 +27,9 @@ const G = M_GRADIENT;
 const GOLD = M_AC;
 
 const PLAN_ICONS = {
-  'Free Trial':      <Lock sx={{ fontSize: 22 }} />,
-  'Classic':         <WorkspacePremium sx={{ fontSize: 22 }} />,
-  'Classic Pro':     <Diamond sx={{ fontSize: 22 }} />,
+  'Starter':         <Lock sx={{ fontSize: 22 }} />,
+  'Studio':          <WorkspacePremium sx={{ fontSize: 22 }} />,
+  'Pro':             <Diamond sx={{ fontSize: 22 }} />,
   'Enterprise Plus': <Workspaces sx={{ fontSize: 22 }} />,
 };
 
@@ -122,7 +122,7 @@ function PricingCard({ plan, isAnnual, index }) {
           ) : (
             <>
               <Typography sx={{ color: '#111111', fontWeight: 900, fontSize: '3rem', lineHeight: 1, letterSpacing: '-0.04em' }}>{price}</Typography>
-              {!isFree && <Typography sx={{ color: '#475569', fontSize: '0.9rem', mb: 0.5 }}>/mo</Typography>}
+              {!isFree && <Typography sx={{ color: '#475569', fontSize: '0.9rem', mb: 0.5 }}>one-time</Typography>}
             </>
           )}
         </Box>
@@ -183,61 +183,41 @@ function PricingCard({ plan, isAnnual, index }) {
 // ── FAQ data ─────────────────────────────────────────────────────────────────
 const FAQS = [
   {
-    q: 'Can I switch plans at any time?',
-    a: 'Yes — upgrade, downgrade, or cancel anytime. Changes take effect at the start of your next billing cycle.',
+    q: 'Do credits expire?',
+    a: 'No. Credit packs are one-time purchases. Unused credits stay in your wallet until you use them, and failed jobs are refunded automatically.',
   },
   {
-    q: 'What languages are supported on the Free Trial?',
-    a: 'All plans, including Free Trial, give access to the full library of 50+ languages including Luganda, Swahili, Amharic, Yoruba, English, French and more.',
+    q: 'What languages are included?',
+    a: 'Every pack includes the full library of 50+ languages including Luganda, Swahili, Amharic, Yoruba, English, French and more. Billing is by credits, not by language.',
   },
   {
-    q: "What's included in Classic Pro's API access?",
-    a: 'Classic Pro includes full REST API access with standard rate limits, allowing you to integrate transcription, translation, TTS and summarization into your own apps.',
+    q: 'How do API keys work?',
+    a: 'Create a metered key (av_live_…) in Studio to debit your wallet, or ask an admin for an unlimited key (av_unlim_…) for dedicated systems. Send it as X-API-Key or Authorization: Bearer.',
   },
   {
     q: 'How does Enterprise Plus pricing work?',
-    a: 'Enterprise Plus is custom-quoted based on volume, infrastructure needs, and SLA requirements. Contact our sales team and we\'ll tailor a package for your organisation.',
+    a: 'Enterprise Plus is invoice-billed with custom credit volume, volume rates, and a dedicated wallet. Contact sales and we will quote for your organisation.',
   },
 ];
 
 // ── Main export ───────────────────────────────────────────────────────────────
 export default function PricingComponent() {
-  const [isAnnual, setIsAnnual] = useState(false);
-
   return (
     <Box sx={{ bgcolor: 'transparent', pb: { xs: 5, md: 7 } }}>
       <MarketingPageHeader
         chip="Pricing"
         title="Start free."
-        titleAccent="Scale effortlessly."
-        subtitle="No surprise fees. No lock-in. Upgrade or cancel anytime."
+        titleAccent="Pay as you go."
+        subtitle="Pay as you go. Credits never expire. No monthly lock-in."
         pt={{ xs: 8, md: 9 }}
         pb={2.5}
       />
 
       <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 6, animation: `${fadeUp} 0.5s ease both` }}>
-          <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 2, bgcolor: M_SURFACE, border: `1px solid ${M_BORDER}`, borderRadius: '999px', px: 2.5, py: 1 }}>
-            <Typography sx={{ color: !isAnnual ? M_BLACK : M_TEXT_MUTED, fontWeight: 700, fontSize: '0.88rem' }}>Monthly</Typography>
-            <Switch
-              checked={isAnnual}
-              onChange={e => setIsAnnual(e.target.checked)}
-              sx={{
-                '& .MuiSwitch-track': { background: G, opacity: 1 },
-                '& .MuiSwitch-thumb': { background: '#fff' },
-              }}
-            />
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography sx={{ color: isAnnual ? M_BLACK : M_TEXT_MUTED, fontWeight: 700, fontSize: '0.88rem' }}>Annual</Typography>
-              <Chip label="Save 20%" size="small" sx={{ bgcolor: 'rgba(16,185,129,0.1)', color: '#059669', fontWeight: 700, fontSize: '0.68rem', borderRadius: '999px' }} />
-            </Box>
-          </Box>
-        </Box>
-
         <Grid container spacing={2.5} justifyContent="center" alignItems="stretch" sx={{ mb: 8 }}>
           {PLANS.map((plan, i) => (
             <Grid item xs={12} sm={6} md={3} key={plan.id}>
-              <PricingCard plan={plan} isAnnual={isAnnual} index={i} />
+              <PricingCard plan={plan} isAnnual={false} index={i} />
             </Grid>
           ))}
         </Grid>
@@ -250,10 +230,10 @@ export default function PricingComponent() {
           animation: `${fadeUp} 0.5s ease 0.4s both`,
         }}>
           {[
-            { icon: <ShieldOutlined sx={{ fontSize: 18, color: '#10b981' }} />, text: 'Secure Stripe payments' },
+            { icon: <ShieldOutlined sx={{ fontSize: 18, color: '#10b981' }} />, text: 'Secure Pesapal payments' },
             { icon: <VerifiedUser sx={{ fontSize: 18, color: M_AC }} />, text: 'SOC 2 compliant' },
-            { icon: <Bolt sx={{ fontSize: 18, color: M_AC_DARK }} />, text: 'Instant activation' },
-            { icon: <Lock sx={{ fontSize: 18, color: GOLD }} />, text: 'Cancel anytime' },
+            { icon: <Bolt sx={{ fontSize: 18, color: M_AC_DARK }} />, text: 'Credits added on payment' },
+            { icon: <Lock sx={{ fontSize: 18, color: GOLD }} />, text: 'Credits never expire' },
           ].map(({ icon, text }) => (
             <Box key={text} sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
               {icon}

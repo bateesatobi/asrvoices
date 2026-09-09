@@ -21,6 +21,50 @@ export function getApiBaseUrl() {
 /** @type {ApiGroup[]} */
 export const API_GROUPS = [
   {
+    id: 'api-keys',
+    title: 'API Keys',
+    description: 'Create and revoke client keys. Metered keys debit the bound wallet; unlimited keys skip charging.',
+    endpoints: [
+      {
+        id: 'list-keys',
+        method: 'GET',
+        path: '/api/keys',
+        summary: 'List your keys',
+        description: 'Returns metadata only. The plaintext secret is never shown again after create.',
+        notes: ['Requires a signed-in studio session.'],
+        responseExample: `{
+  "keys": [
+    {
+      "id": "…",
+      "name": "Production",
+      "kind": "metered",
+      "prefix": "av_live_",
+      "status": "active",
+      "request_count": 12,
+      "credits_charged": 4.5
+    }
+  ]
+}`,
+      },
+      {
+        id: 'create-key',
+        method: 'POST',
+        path: '/api/keys',
+        summary: 'Create a metered key',
+        description: 'Issues av_live_… (or av_test_… if test=true). Send the returned key as X-API-Key or Authorization: Bearer.',
+        contentType: 'application/json',
+        parameters: [
+          { name: 'name', type: 'string', required: true, description: 'Display name for this key.' },
+          { name: 'notes', type: 'string', required: false, description: 'Optional notes.' },
+        ],
+        notes: [
+          'The plaintext key is returned once in key / api_key.',
+          'Metered keys debit the authenticated user’s wallet on each billed job.',
+        ],
+      },
+    ],
+  },
+  {
     id: 'translation',
     title: 'Translation',
     description: 'Translate plain text or documents between supported language pairs.',
@@ -455,15 +499,17 @@ export const HTTP_STATUS_DOCS = [
   { code: 200, label: 'OK', description: 'Request succeeded.' },
   { code: 202, label: 'Accepted', description: 'Job accepted for background processing.' },
   { code: 400, label: 'Bad Request', description: 'Missing or invalid parameters.' },
-  { code: 402, label: 'Payment Required', description: 'Insufficient credits — upgrade or top up.' },
-  { code: 403, label: 'Forbidden', description: 'Plan does not include this feature.' },
+  { code: 402, label: 'Payment Required', description: 'Insufficient credits — buy a credit pack.' },
+  { code: 403, label: 'Forbidden', description: 'API key is bound to a different user, or the key is revoked.' },
   { code: 500, label: 'Server Error', description: 'Unexpected failure; retry with backoff.' },
 ];
 
 export const AUTH_DOCS = {
   title: 'Authentication',
   paragraphs: [
-    'Include your user identifier on mutating requests. The dashboard injects user_id automatically when you use the official web app.',
-    'Credit-consuming operations return HTTP 402 when the balance is too low. Check balance with GET /api/credits/balance/{user_id} before batch jobs.',
+    'Studio and dashboard requests send a Firebase ID token. The web app injects user_id automatically.',
+    'Integrations should send an API key instead: X-API-Key: av_live_… or Authorization: Bearer av_live_… / av_unlim_… / av_test_….',
+    'Metered keys (av_live_) debit the bound user’s wallet. Unlimited keys (av_unlim_) skip the wallet but still log usage. Keys cannot be used for a different user_id (HTTP 403).',
+    'Credit-consuming operations return HTTP 402 when the balance is too low. Top up with a credit pack, or check GET /api/credits/balance/{user_id}.',
   ],
 };

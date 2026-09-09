@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button, Typography, Box, CircularProgress, Alert, Container, CssBaseline, Snackbar } from '@mui/material';
+import { BASE_URL, getCurrentUser } from '../services/api';
 import axios from 'axios';
-import { BASE_URL } from '../services/api';
 
 const PesapalCheckoutForm = ({ amount, tier, tierId, userId, onClose }) => {
   const [errorMessage, setErrorMessage] = useState(null);
@@ -18,16 +18,22 @@ const PesapalCheckoutForm = ({ amount, tier, tierId, userId, onClose }) => {
     setErrorMessage(null);
 
     try {
+      const current = getCurrentUser();
+      const resolvedUserId = userId || current.userId || current.uid;
+      if (!resolvedUserId) {
+        throw new Error('Please sign in to buy credits.');
+      }
       const formData = new FormData();
       formData.append('tier_id', tierId);
       formData.append('price', amount);
       formData.append('tier', tier);
-      formData.append('user_id', userId);
+      formData.append('user_id', resolvedUserId);
 
-      // Create the Checkout Session on your server
-      const response = await axios.post(paymentServerUrl, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const headers = { 'Content-Type': 'multipart/form-data', 'user-id': resolvedUserId };
+      const token = localStorage.getItem('idToken') || localStorage.getItem('token');
+      if (token) headers.Authorization = `Bearer ${token}`;
+
+      const response = await axios.post(paymentServerUrl, formData, { headers });
 
       if (response.status !== 200) {
         throw new Error(`Server error: ${response.status} ${response.statusText}`);

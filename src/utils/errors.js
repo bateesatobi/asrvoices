@@ -8,8 +8,8 @@ const AXIOS_NOISE = /^Request failed with status code \d+$/i;
 const API_ERROR_MESSAGES = {
   400: 'Invalid request. Please check your input and try again.',
   401: 'Your session has expired. Please log in again.',
-  402: 'Insufficient credits for this action. Please upgrade your plan to continue.',
-  403: 'You have reached your usage limit. Please upgrade your plan to continue.',
+  402: 'Insufficient credits. Buy a credit pack to continue.',
+  403: 'You do not have enough credits for this action. Top up your wallet to continue.',
   404: 'The requested resource was not found.',
   408: 'The request timed out. Please check your connection and try again.',
   413: 'This file is too large. Maximum upload size is 500 MB. Compress the video or use a shorter clip.',

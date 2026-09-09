@@ -1,83 +1,84 @@
 /**
- * Shared pricing plans — single source of truth.
- * Tier names MUST match subscription_limits.py keys exactly.
- * Active tiers: free_trial, Classic, Classic Pro, Enterprise Plus
+ * Pay-as-you-go credit packs and rate card.
+ * Must stay aligned with ASRAPI/utils/credit_manager.py
  */
 
-export const PLANS = [
+export const USD_PER_CREDIT = 0.05;
+
+export const CREDIT_RATES = {
+  transcription: 1.0,
+  audio_transcription: 1.0,
+  video_extraction: 1.5,
+  text_translation: 0.0005,
+  doc_translation: 5.0,
+  summarization: 2.0,
+  tts: 0.001,
+  voice_cloning: 10.0,
+  voice_to_voice: 2.0,
+  video_dubbing: 8.0,
+  voiceover_batch: 0.002,
+};
+
+export const CREDIT_PACKS = [
   {
-    id: 'free_trial',
-    backendTier: 'free_trial',
-    title: 'Free Trial',
-    monthly: '$0',
-    monthlyRaw: 0,
-    annual: '$0',
-    annualRaw: 0,
-    description: 'Explore Avoices with no commitment. No credit card required.',
+    id: 'starter',
+    backendTier: 'starter',
+    title: 'Starter',
+    monthly: '$5',
+    monthlyRaw: 5,
+    annual: '$5',
+    annualRaw: 5,
+    credits: 100,
     popular: false,
-    cta: 'Get Started Free',
-    ctaPath: '/get-started',
-    features: [
-      { label: '2 audio uploads/mo', included: true },
-      { label: '2 video uploads/mo', included: true },
-      { label: '1 video dubbing/mo', included: true },
-      { label: '2 voiceover renders/mo', included: true },
-      { label: '2 text translations/mo', included: true },
-      { label: '2 AI summarizations/mo', included: true },
-      { label: '2 TTS conversions/mo', included: true },
-      { label: '50+ languages', included: true },
-      { label: 'API access', included: false },
-      { label: 'Custom voice models', included: false },
-    ],
-  },
-  {
-    id: 'classic',
-    backendTier: 'Classic',
-    title: 'Classic',
-    monthly: '$9',
-    monthlyRaw: 9,
-    annual: '$7',
-    annualRaw: 7,
-    description: 'For individuals and small teams getting started with voice AI.',
-    popular: false,
-    cta: 'Get Classic',
+    cta: 'Buy 100 credits',
     ctaPath: '/dashboard/subscription',
+    description: 'Try the studio — about 100 minutes of audio transcription.',
     features: [
-      { label: '10 audio uploads/mo', included: true },
-      { label: '10 video uploads/mo', included: true },
-      { label: '5 video dubbing/mo', included: true },
-      { label: '20 voiceover renders/mo', included: true },
-      { label: '50 text translations/mo', included: true },
-      { label: '30 AI summarizations/mo', included: true },
-      { label: '50 TTS conversions/mo', included: true },
-      { label: '50+ languages', included: true },
-      { label: 'API access', included: false },
-      { label: 'Custom voice models', included: false },
+      { label: '100 credits (~$0.05 each)', included: true },
+      { label: '~100 min audio transcription', included: true },
+      { label: 'TTS, translate, and summarize', included: true },
+      { label: 'Credits never expire', included: true },
+      { label: 'Refunded if a job fails', included: true },
     ],
   },
   {
-    id: 'classic_pro',
-    backendTier: 'Classic Pro',
-    title: 'Classic Pro',
-    monthly: '$29',
-    monthlyRaw: 29,
-    annual: '$23',
-    annualRaw: 23,
-    description: 'For growing teams shipping production-grade voice AI products.',
+    id: 'studio',
+    backendTier: 'studio',
+    title: 'Studio',
+    monthly: '$15',
+    monthlyRaw: 15,
+    annual: '$15',
+    annualRaw: 15,
+    credits: 350,
     popular: true,
-    cta: 'Get Classic Pro',
+    cta: 'Buy 350 credits',
     ctaPath: '/dashboard/subscription',
+    description: 'Best for weekly sermons, dubbing, and TTS.',
     features: [
-      { label: '50 audio uploads/mo', included: true },
-      { label: '50 video uploads/mo', included: true },
-      { label: '30 video dubbing/mo', included: true },
-      { label: '200 voiceover renders/mo', included: true },
-      { label: '1,000 text translations/mo', included: true },
-      { label: '600 AI summarizations/mo', included: true },
-      { label: '1,000 TTS conversions/mo', included: true },
-      { label: '50+ languages', included: true },
-      { label: 'Full API access', included: true },
-      { label: 'Custom voice models', included: false },
+      { label: '350 credits (16% bonus)', included: true },
+      { label: '~350 min audio or ~40 min dubbing', included: true },
+      { label: 'Refunded if a job fails', included: true },
+      { label: 'Credits never expire', included: true },
+    ],
+  },
+  {
+    id: 'pro',
+    backendTier: 'pro',
+    title: 'Pro',
+    monthly: '$40',
+    monthlyRaw: 40,
+    annual: '$40',
+    annualRaw: 40,
+    credits: 1000,
+    popular: false,
+    cta: 'Buy 1,000 credits',
+    ctaPath: '/dashboard/subscription',
+    description: 'Production teams running dubbing and voiceover.',
+    features: [
+      { label: '1,000 credits (25% bonus)', included: true },
+      { label: '~1,000 min audio or ~2 hours dubbing', included: true },
+      { label: 'Best rate per credit', included: true },
+      { label: 'Credits never expire', included: true },
     ],
   },
   {
@@ -88,28 +89,50 @@ export const PLANS = [
     monthlyRaw: null,
     annual: 'Custom',
     annualRaw: null,
-    description: 'Unlimited usage, custom models, and enterprise SLA for your team.',
+    credits: null,
     popular: false,
     cta: 'Contact Sales',
-    ctaPath: 'mailto:phosaico@gmail.com?subject=Enterprise%20Plus%20Inquiry',
+    ctaPath: 'mailto:phosaico@gmail.com?subject=Enterprise%20credits',
+    description: 'Invoice billing, volume rates, and a dedicated wallet.',
     features: [
-      { label: 'Unlimited audio uploads', included: true },
-      { label: 'Unlimited video uploads', included: true },
-      { label: 'Unlimited video dubbing', included: true },
-      { label: 'Unlimited voiceover renders', included: true },
-      { label: 'Unlimited translations', included: true },
-      { label: 'Unlimited AI summarizations', included: true },
-      { label: 'Unlimited TTS conversions', included: true },
-      { label: '50+ languages', included: true },
-      { label: 'Full API + webhooks access', included: true },
+      { label: 'Custom credit volume', included: true },
+      { label: 'Invoice / purchase order', included: true },
+      { label: 'Full API access', included: true },
       { label: 'Custom voice models', included: true },
     ],
   },
 ];
 
+/** @deprecated Use CREDIT_PACKS — kept so existing screens keep rendering. */
+export const PLANS = CREDIT_PACKS;
+
+export function catalogPacksToUi(catalog) {
+  const packs = catalog?.packs;
+  if (!Array.isArray(packs) || !packs.length) {
+    return CREDIT_PACKS.filter((p) => p.monthlyRaw);
+  }
+  return packs.map((p) => ({
+    id: p.id,
+    backendTier: p.id,
+    title: p.name,
+    monthly: `$${p.usd}`,
+    monthlyRaw: p.usd,
+    annual: `$${p.usd}`,
+    annualRaw: p.usd,
+    credits: p.credits,
+    popular: Boolean(p.popular),
+    cta: `Buy ${Number(p.credits).toLocaleString()} credits`,
+    ctaPath: '/dashboard/subscription',
+    description: p.description || '',
+    features: (p.features || []).map((label) => (
+      typeof label === 'string' ? { label, included: true } : { label: label.label || String(label), included: true }
+    )),
+  }));
+}
+
 export const PLAN_COLORS = {
-  'Free Trial':      '#64748b',
-  'Classic':         '#10b981',
-  'Classic Pro':     '#e89f28',
+  Starter: '#64748b',
+  Studio: '#e89f28',
+  Pro: '#10b981',
   'Enterprise Plus': '#C47F10',
 };

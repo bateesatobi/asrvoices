@@ -135,6 +135,7 @@ const MENU = [
   {
     section: 'Developers',
     items: [
+      { label: 'API Keys', icon: <ApiIcon fontSize="small" />, path: '/dashboard/api-keys' },
       { label: 'API Reference', icon: <ApiIcon fontSize="small" />, path: '/dashboard/api-reference' },
       { label: 'Languages', icon: <LanguageIcon fontSize="small" />, path: '/dashboard/lang-support' },
     ],
@@ -302,7 +303,7 @@ export default function ElevenLabsStyleSidebar({ open, toggleDrawer }) {
                 {[
                   { label: 'Profile', icon: <PersonIcon fontSize="small" />, path: '/dashboard/profile' },
                   { label: 'Usage', icon: <TimelineIcon fontSize="small" />, path: '/dashboard/usage' },
-                  { label: 'Upgrade', icon: <UpgradeIcon fontSize="small" />, path: '/dashboard/subscription' },
+                  { label: 'Credits', icon: <UpgradeIcon fontSize="small" />, path: '/dashboard/subscription' },
                   { label: 'Support', icon: <SupportIcon fontSize="small" />, path: '/dashboard/contact-support' },
                 ].map(({ label, icon, path }) => (
                   <ListItem key={path} disablePadding>

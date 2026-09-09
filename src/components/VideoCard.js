@@ -8,7 +8,6 @@ import {
 import { CloudUpload, VideoCall, CheckCircle, Link as LinkIcon } from "@mui/icons-material";
 import ViewVideoComponent from "./ViewVideoComponent";
 import { videoAPI, checkUsageBeforeRequest, handleAPIError, BASE_URL } from '../services/api';
-import UpgradePromptModal from './UpgradePromptModal';
 import { ActivityStrip } from './progress';
 
 const G = 'linear-gradient(135deg, #E8A020, #C47F10)';
@@ -44,8 +43,6 @@ const VideoCard = () => {
   const [docId, setDocId] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [snack, setSnack] = useState({ open: false, msg: '', sev: 'success' });
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [upgradeData, setUpgradeData] = useState(null);
 
   const fileInputRef = useRef(null);
   const notify = (msg, sev = 'success') => setSnack({ open: true, msg, sev });
@@ -86,8 +83,7 @@ const VideoCard = () => {
       if (!user.userId) throw new Error('Please log in to use video processing services');
       const usageResult = await checkUsageBeforeRequest('videoUpload');
       if (!usageResult.allowed) {
-        setUpgradeData({ currentUsage: usageResult.current_usage || 0, limit: usageResult.limit || 0, endpoint: 'videoUpload', tier: usageResult.tier || 'free_trial' });
-        setShowUpgradeModal(true);
+        window.dispatchEvent(new CustomEvent('show-upgrade-modal', { detail: { endpoint: 'videoUpload' } }));
         setLoading(false);
         return;
       }
@@ -294,15 +290,6 @@ const VideoCard = () => {
         PaperProps={{ sx: { width: { xs: '100%', sm: 600 }, borderLeft: '1px solid rgba(17, 17, 17,0.07)' } }}>
         {docId && <ViewVideoComponent audioId={docId} />}
       </Drawer>
-
-      <UpgradePromptModal
-        open={showUpgradeModal}
-        onClose={() => setShowUpgradeModal(false)}
-        currentUsage={upgradeData?.currentUsage || 0}
-        limit={upgradeData?.limit || 0}
-        endpoint={upgradeData?.endpoint || 'videoUpload'}
-        tier={upgradeData?.tier || 'free_trial'}
-      />
     </Box>
   );
 };

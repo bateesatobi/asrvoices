@@ -4,16 +4,17 @@
  * a job is submitted. The backend remains the source of truth.
  */
 export const CREDIT_RATES = {
-  transcription: 1.0,      // per minute of audio
-  video_extraction: 1.5,  // per minute of video
-  text_translation: 0.0005, // per character
-  doc_translation: 5.0,    // per page
-  summarization: 2.0,      // per job
-  tts: 0.001,              // per character
-  voice_cloning: 10.0,     // per job
-  voice_to_voice: 2.0,     // per minute
-  video_dubbing: 8.0,      // per minute of video
-  voiceover_batch: 0.002,  // per character
+  transcription: 1.0,
+  audio_transcription: 1.0,
+  video_extraction: 1.5,
+  text_translation: 0.0005,
+  doc_translation: 5.0,
+  summarization: 2.0,
+  tts: 0.001,
+  voice_cloning: 10.0,
+  voice_to_voice: 2.0,
+  video_dubbing: 8.0,
+  voiceover_batch: 0.002,
 };
 
 /** Round like the backend (2 dp). */

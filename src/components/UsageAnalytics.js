@@ -15,7 +15,7 @@ import {
   SwapHoriz as TransactionIcon,
   Refresh as RefreshIcon
 } from '@mui/icons-material';
-import { subscriptionAPI } from '../services/api';
+import { subscriptionAPI, keysAPI } from '../services/api';
 import { format } from 'date-fns';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -62,18 +62,21 @@ export default function UsageAnalytics({ userId }) {
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ total_pages: 1, total: 0, limit: 20 });
+  const [apiKeys, setApiKeys] = useState([]);
 
   const fetchData = React.useCallback(async (p = 1) => {
     try {
       setLoading(true);
-      const [balRes, ledgerRes, analyticsRes] = await Promise.all([
+      const [balRes, ledgerRes, analyticsRes, keysRes] = await Promise.all([
         subscriptionAPI.getBalance(userId),
         subscriptionAPI.getLedger(userId, p, 20),
-        subscriptionAPI.getAnalytics(userId)
+        subscriptionAPI.getAnalytics(userId),
+        keysAPI.list().catch(() => ({ keys: [] })),
       ]);
       setBalance(balRes.balance || 0);
       setLedger(ledgerRes.ledger || []);
       setAnalytics(analyticsRes.analytics || {});
+      setApiKeys(keysRes.keys || []);
       setPagination(ledgerRes.pagination || { total_pages: 1, total: 0, limit: 20 });
       setPage(p);
 
@@ -134,6 +137,35 @@ export default function UsageAnalytics({ userId }) {
         <Alert severity="error" sx={{ mb: 3, borderRadius: '12px', bgcolor: 'rgba(239,68,68,0.1)', color: '#fca5a5' }}>
           {error}
         </Alert>
+      )}
+
+      {apiKeys.length > 0 && (
+        <Paper sx={{ ...GLASS, p: 3, mb: 4 }}>
+          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
+            <TransactionIcon sx={{ color: '#f59e0b' }} />
+            <Typography variant="h6" sx={{ color: '#111111', fontWeight: 800 }}>API key usage</Typography>
+            <Button size="small" href="/dashboard/api-keys" sx={{ ml: 'auto', textTransform: 'none', fontWeight: 700, color: '#f59e0b' }}>
+              Manage keys
+            </Button>
+          </Stack>
+          <Stack spacing={1.25}>
+            {apiKeys.slice(0, 6).map((key) => (
+              <Stack key={key.id} direction="row" justifyContent="space-between" alignItems="center">
+                <Box>
+                  <Typography sx={{ fontWeight: 700, fontSize: '0.9rem' }}>{key.name || key.prefix}</Typography>
+                  <Typography sx={{ color: '#64748b', fontSize: '0.75rem' }}>
+                    {(key.kind || 'metered')} · {key.prefix}
+                  </Typography>
+                </Box>
+                <Typography sx={{ fontWeight: 800, fontSize: '0.85rem' }}>
+                  {(key.request_count || 0).toLocaleString()} req
+                  {key.credits_charged ? ` · ${Number(key.credits_charged).toFixed(1)} cr` : ''}
+                  {key.credits_waived ? ` · ${Number(key.credits_waived).toFixed(1)} waived` : ''}
+                </Typography>
+              </Stack>
+            ))}
+          </Stack>
+        </Paper>
       )}
 
       {/* Top Banner metrics */}

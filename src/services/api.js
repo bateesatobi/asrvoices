@@ -86,7 +86,7 @@ apiClient.interceptors.response.use(
 
     const enriched = enrichAxiosError(error);
 
-    if (error.response?.status === 402 || error.response?.status === 403) {
+    if (error.response?.status === 402) {
       notifyUser({
         type: 'warning',
         message: enriched.friendlyMessage,
@@ -98,6 +98,11 @@ apiClient.interceptors.response.use(
           endpoint: error.config?.url,
         },
       }));
+    } else if (error.response?.status === 403) {
+      notifyUser({
+        type: 'warning',
+        message: enriched.friendlyMessage,
+      });
     }
     return Promise.reject(enriched);
   }
@@ -138,87 +143,20 @@ export const subscriptionAPI = {
     return response.data;
   },
 
-  // Process payment with Stripe — accepts only a Stripe paymentMethodId, never raw card data
-  processPayment: async (paymentData) => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const userId = user.uid || user.userId;
-
-    if (!userId) throw new Error('User not authenticated');
-
-    const formData = new FormData();
-    formData.append('user_id', userId);
-    formData.append('tier_id', paymentData.tierId);
-    formData.append('amount', paymentData.amount);
-    formData.append('currency', paymentData.currency || 'USD');
-    formData.append('email', paymentData.email || '');
-
-    // For card payments: send only the Stripe-generated paymentMethodId (never raw card details)
-    if (paymentData.paymentMethodId) {
-      formData.append('payment_method_id', paymentData.paymentMethodId);
-    }
-    // For mobile money: phone and provider are non-sensitive
-    if (paymentData.phoneNumber) formData.append('phone_number', paymentData.phoneNumber);
-    if (paymentData.provider) formData.append('provider', paymentData.provider);
-
-    const response = await axios.post(`${BASE_URL}/api/process-payment`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: REQUEST_TIMEOUT,
-    });
-    return response.data;
+  // Legacy Stripe helpers — retired. Use Pesapal checkout (/create-checkout-session).
+  processPayment: async () => {
+    throw new Error('Stripe checkout is retired. Buy credits via Pesapal on the Credits page.');
   },
 
-  // Create Stripe payment intent
-  createPaymentIntent: async (amount, currency = 'USD', metadata = {}) => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const userId = user.uid || user.userId;
-
-    if (!userId) {
-      throw new Error('User not authenticated');
-    }
-
-    const formData = new FormData();
-    formData.append('user_id', userId);
-    formData.append('amount', amount);
-    formData.append('currency', currency);
-    formData.append('metadata', JSON.stringify(metadata));
-
-    try {
-      const response = await axios.post(`${BASE_URL}/api/create-payment-intent`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: REQUEST_TIMEOUT
-      });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+  createPaymentIntent: async () => {
+    throw new Error('Stripe checkout is retired. Buy credits via Pesapal on the Credits page.');
   },
 
-  // Confirm payment
-  confirmPayment: async (paymentIntentId, paymentMethodId) => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const userId = user.uid || user.userId;
-
-    if (!userId) {
-      throw new Error('User not authenticated');
-    }
-
-    const formData = new FormData();
-    formData.append('user_id', userId);
-    formData.append('payment_intent_id', paymentIntentId);
-    formData.append('payment_method_id', paymentMethodId);
-
-    try {
-      const response = await axios.post(`${BASE_URL}/api/confirm-payment`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: REQUEST_TIMEOUT
-      });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+  confirmPayment: async () => {
+    throw new Error('Stripe checkout is retired. Buy credits via Pesapal on the Credits page.');
   },
 
-  // Create Stripe checkout session
+  // Create Pesapal checkout session (pack id in price_id/tier)
   createCheckoutSession: async (priceId, userId) => {
     const response = await apiClient.post('/create-checkout-session', {
       price_id: priceId,
@@ -258,6 +196,25 @@ export const subscriptionAPI = {
     return response.data;
   },
 
+  getSubscription: async (userId) => {
+    const [sub, bal] = await Promise.all([
+      apiClient.get('/api/subscription', { params: { user_id: userId } })
+        .then((r) => r.data)
+        .catch(() => ({})),
+      apiClient.get(`/api/credits/balance/${userId}`)
+        .then((r) => r.data)
+        .catch(() => ({})),
+    ]);
+    return {
+      billing_model: 'credits',
+      tier: 'payg',
+      ...sub,
+      credit_balance: bal.balance ?? sub.credit_balance ?? 0,
+    };
+  },
+
+  getSubscriptionStatus: async (userId) => subscriptionAPI.getSubscription(userId),
+
   // Get credit ledger (transaction history) with optional pagination
   getLedger: async (userId, page = 1, limit = 20) => {
     const response = await apiClient.get(`/api/credits/ledger/${userId}?page=${page}&limit=${limit}`);
@@ -274,7 +231,12 @@ export const subscriptionAPI = {
   estimateCost: async (service, quantity) => {
     const response = await apiClient.post('/api/credits/estimate', { service, quantity });
     return response.data;
-  }
+  },
+
+  getBillingCatalog: async () => {
+    const response = await apiClient.get('/api/billing/catalog');
+    return response.data;
+  },
 };
 
 function assertMediaUploadSize(file, kind = 'file') {
@@ -1173,6 +1135,25 @@ export const dataAPI = {
       doc_id: docId,
       user_id: userId,
     });
+    return response.data;
+  },
+};
+
+export const keysAPI = {
+  list: async () => {
+    const response = await apiClient.get('/api/keys');
+    return response.data;
+  },
+  create: async ({ name, notes }) => {
+    const response = await apiClient.post('/api/keys', { name, notes });
+    return response.data;
+  },
+  revoke: async (keyId) => {
+    const response = await apiClient.post(`/api/keys/${encodeURIComponent(keyId)}/revoke`, {});
+    return response.data;
+  },
+  usage: async (keyId) => {
+    const response = await apiClient.get(`/api/keys/${encodeURIComponent(keyId)}/usage`);
     return response.data;
   },
 };

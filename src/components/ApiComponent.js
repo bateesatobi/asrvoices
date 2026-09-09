@@ -98,26 +98,26 @@ const API_FEATURES = [
 // ── Pricing tiers ─────────────────────────────────────────────────────────────
 const API_PLANS = [
   {
-    title: 'Pay as you go',
-    price: 'Free',
-    desc: 'Start building today. No commitment.',
-    features: ['1,000 free API calls/mo', 'All endpoints', 'Community support', '10 languages'],
+    title: 'Starter credits',
+    price: '$5',
+    desc: '100 credits for API and studio jobs.',
+    features: ['100 credits (~$0.05 each)', 'Metered API keys (av_live_)', 'Credits never expire', 'Refunds on failed jobs'],
     popular: false,
-    cta: 'Get API Key',
+    cta: 'Buy credits',
   },
   {
-    title: 'Growth',
-    price: '$20/mo',
-    desc: 'For teams shipping at scale.',
-    features: ['50,000 API calls/mo', 'All endpoints', 'Priority support', 'All 50+ languages', 'Webhooks'],
+    title: 'Studio credits',
+    price: '$15',
+    desc: 'Best for weekly production volume.',
+    features: ['350 credits (bonus pack)', 'All endpoints', 'Metered or unlimited keys', '50+ languages'],
     popular: true,
-    cta: 'Start Free Trial',
+    cta: 'Buy credits',
   },
   {
     title: 'Enterprise',
     price: 'Custom',
-    desc: 'Mission-critical infrastructure.',
-    features: ['Unlimited API calls', 'Dedicated infra', 'SLA guarantee', 'Custom models', '24/7 support'],
+    desc: 'Invoice billing and dedicated wallets.',
+    features: ['Custom credit volume', 'Unlimited API keys', 'SLA & volume rates', 'Dedicated support'],
     popular: false,
     cta: 'Contact Sales',
   },
@@ -152,9 +152,9 @@ export default function ApiComponent() {
               One API. Every African language. Production-ready in under an hour.
             </Typography>
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Button component={Link} to="/get-started" variant="contained" endIcon={<ArrowForward />}
+              <Button component={Link} to="/dashboard/api-keys" variant="contained" endIcon={<ArrowForward />}
                 sx={{ background: G, color: '#111111', fontWeight: 700, px: 3.5, py: 1.5, borderRadius: '50px', boxShadow: '0 6px 28px rgba(245,158,11,0.45)', fontSize: '1rem', '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 10px 36px rgba(245,158,11,0.6)' } }}>
-                Get API Key Free
+                Get API Key
               </Button>
               <Button component={Link} to="/documentation" variant="outlined"
                 sx={{ borderColor: 'rgba(17, 17, 17,0.15)', color: 'rgba(17, 17, 17, 0.8)', fontWeight: 700, px: 3.5, py: 1.5, borderRadius: '50px', fontSize: '1rem', '&:hover': { borderColor: '#f59e0b', color: '#fbbf24', background: 'rgba(245,158,11,0.08)' } }}>
@@ -309,7 +309,13 @@ export default function ApiComponent() {
                       </Box>
                     ))}
                   </Box>
-                  <Button fullWidth component={Link} to="/get-started" variant={plan.popular ? 'contained' : 'outlined'} endIcon={<ArrowForward />}
+                  <Button
+                    fullWidth
+                    component={plan.cta === 'Contact Sales' ? 'a' : Link}
+                    href={plan.cta === 'Contact Sales' ? 'mailto:phosaico@gmail.com?subject=Enterprise%20credits' : undefined}
+                    to={plan.cta === 'Contact Sales' ? undefined : '/dashboard/subscription'}
+                    variant={plan.popular ? 'contained' : 'outlined'}
+                    endIcon={<ArrowForward />}
                     sx={{
                       py: 1.4, borderRadius: '50px', fontWeight: 700, fontSize: '0.9rem',
                       ...(plan.popular

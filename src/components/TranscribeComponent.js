@@ -16,7 +16,6 @@ import { transcriptionAPI, subscriptionAPI, getFriendlyErrorMessage } from '../s
 import { ASR_LANGUAGES, DEFAULT_ASR_LANG, getAsrLanguageLabel } from '../constants/asrLanguages';
 import LiveTranscribePanel from './Redesigned/LiveTranscribePanel';
 import ViewAudioComponent from './ViewAudioComponent';
-import UpgradePromptModal from './UpgradePromptModal';
 import { AC, G, GLASS, STEPPER_SX } from '../utils/mediaVault';
 import { AvoicesBackdropLoader } from './progress';
 import useFileDrop from '../hooks/useFileDrop';
@@ -102,7 +101,6 @@ export default function TranscribeComponent() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [successMsg, setSuccessMsg] = useState(null);
   const [snack, setSnack] = useState({ open: false, msg: '', sev: 'success' });
-  const [upgradeModal, setUpgradeModal] = useState({ open: false, data: null });
   const [userBalance, setUserBalance] = useState(null);
 
   const recorder = useRef(null);
@@ -544,10 +542,6 @@ export default function TranscribeComponent() {
       <Drawer anchor="right" open={drawerOpen} onClose={() => setDrawerOpen(false)} PaperProps={{ sx: { width: { xs: '100%', sm: 600 }, borderLeft: '1px solid rgba(17,17,17,0.07)' } }}>
         {docId && <ViewAudioComponent audioId={docId} onError={e => { notify(getFriendlyErrorMessage(e), 'error'); setDrawerOpen(false); }} />}
       </Drawer>
-
-      <UpgradePromptModal open={upgradeModal.open} onClose={() => setUpgradeModal({ open: false, data: null })}
-        currentUsage={upgradeModal.data?.currentUsage || 0} limit={upgradeModal.data?.limit || 0}
-        endpoint="upload" tier={upgradeModal.data?.tier || 'free_trial'} />
     </Box>
   );
 }

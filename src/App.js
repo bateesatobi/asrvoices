@@ -35,6 +35,7 @@ import LanguageSupport from "./views/LanguageSupport";
 import ChatbotGuideView from "./views/ChatbotGuideView";
 import ProfileView from "./views/ProfileView";
 import UsageView from "./views/UsageView";
+import ApiKeysView from "./views/ApiKeysView";
 import Chatbot from "./components/Chatbot";
 import UpgradePromptModal from "./components/UpgradePromptModal";
 import GlobalSnackbar from "./components/GlobalSnackbar";
@@ -80,6 +81,7 @@ function App() {
             <Route path="agents" element={<ErrorBoundary><LiveStream /></ErrorBoundary>} />
             <Route path="conversational-ai" element={<ErrorBoundary><VideoStream /></ErrorBoundary>} />
             <Route path="usage" element={<ErrorBoundary><UsageView /></ErrorBoundary>} />
+            <Route path="api-keys" element={<ErrorBoundary><ApiKeysView /></ErrorBoundary>} />
             <Route path="transcribe" element={<ErrorBoundary><Transcribe /></ErrorBoundary>} />
             <Route path="video-transcribe" element={<ErrorBoundary><VideoStream /></ErrorBoundary>} />
             <Route path="profile" element={<ErrorBoundary><ProfileView /></ErrorBoundary>} />

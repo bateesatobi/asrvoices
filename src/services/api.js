@@ -7,6 +7,7 @@ import axios from 'axios';
 import { parseError, notifyUser } from '../utils/errors';
 import { NEURAL_SPEAKERS } from '../constants/neural_config';
 import { API_BASE_URL } from '../constants/apiBase';
+import { MAX_MEDIA_UPLOAD_BYTES, MAX_MEDIA_UPLOAD_MB } from '../constants/uploads';
 
 // Base configuration
 export const BASE_URL = API_BASE_URL;
@@ -276,12 +277,24 @@ export const subscriptionAPI = {
   }
 };
 
+function assertMediaUploadSize(file, kind = 'file') {
+  if (file?.size > MAX_MEDIA_UPLOAD_BYTES) {
+    const mb = (file.size / (1024 * 1024)).toFixed(0);
+    const err = new Error(
+      `This ${kind} is ${mb} MB. Maximum upload size is ${MAX_MEDIA_UPLOAD_MB} MB. Compress the file or use a shorter clip.`
+    );
+    err.response = { status: 413, data: { detail: err.message } };
+    throw err;
+  }
+}
+
 /**
  * AUDIO TRANSCRIPTION APIs
  */
 export const transcriptionAPI = {
   // Upload audio file for transcription
   uploadAudio: async (audioFile, sourceLang, userId, responseFormat = 'json') => {
+    assertMediaUploadSize(audioFile, 'audio');
     const formData = new FormData();
     formData.append('audio_file', audioFile);
     formData.append('source_lang', sourceLang);
@@ -365,6 +378,8 @@ export const videoAPI = {
 
   // Extract audio from video file
   extractAudioFromVideo: async (videoFile, sourceLang, userId, responseFormat = 'json') => {
+    assertMediaUploadSize(videoFile, 'video');
+
     const formData = new FormData();
     formData.append('video_file', videoFile);
     formData.append('source_lang', sourceLang);

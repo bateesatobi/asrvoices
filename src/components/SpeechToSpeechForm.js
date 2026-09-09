@@ -62,7 +62,7 @@ export default function SpeechToSpeechForm() {
   const handleFile = e => {
     const f = e.target.files[0];
     if (!f) return;
-    if (f.size > 100 * 1024 * 1024) { notify('File must be under 100MB', 'error'); return; }
+    if (f.size > 500 * 1024 * 1024) { notify('File must be under 500MB', 'error'); return; }
     if (!f.type.startsWith('audio/')) { notify('Please upload an audio file', 'error'); return; }
     setFile(f);
     e.target.value = '';
@@ -160,7 +160,7 @@ export default function SpeechToSpeechForm() {
               <CloudUpload sx={{ fontSize: 26, color: '#C47F10' }} />
             </Box>
             <Box sx={{ color: '#111111', fontWeight: 600, fontSize: '0.95rem', mb: 0.5 }}>Click to upload audio file</Box>
-            <Box sx={{ color: '#64748b', fontSize: '0.8rem' }}>WAV, MP3, M4A · Max 100MB</Box>
+            <Box sx={{ color: '#64748b', fontSize: '0.8rem' }}>WAV, MP3, M4A · Max 500MB</Box>
           </>
         )}
       </Box>

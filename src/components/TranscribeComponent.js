@@ -36,7 +36,7 @@ const LABEL_SX = {
   '&.Mui-focused': { color: '#1a1a1a' } 
 };
 
-const MAX_FILE_MB = 50;
+const MAX_FILE_MB = 500;
 const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;
 
 const FORMAT_OPTIONS = [

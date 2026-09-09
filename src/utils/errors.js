@@ -12,7 +12,7 @@ const API_ERROR_MESSAGES = {
   403: 'You have reached your usage limit. Please upgrade your plan to continue.',
   404: 'The requested resource was not found.',
   408: 'The request timed out. Please check your connection and try again.',
-  413: 'The file is too large. Please upload a smaller file.',
+  413: 'This file is too large. Maximum upload size is 500 MB. Compress the video or use a shorter clip.',
   422: 'The file format is not supported.',
   429: 'Too many requests. Please wait a moment and try again.',
   500: 'A server error occurred. Please try again in a few moments.',
@@ -68,8 +68,12 @@ export function parseError(error, fallback = 'Something went wrong. Please try a
   const isUpgrade = status === 402 || status === 403 ||
     (serverMsg && (serverMsg.includes('limit') || serverMsg.includes('subscription') || serverMsg.includes('credit')));
 
-  // Network errors
+  // Network errors — Safari reports proxy 413s as CORS with no response body
   if (!error.response) {
+    const blob = `${error.message || ''} ${error.code || ''}`;
+    if (/status code:\s*413/i.test(blob) || /\b413\b/.test(blob) && /access-control-allow-origin/i.test(blob)) {
+      return { message: API_ERROR_MESSAGES[413], shouldUpgrade: false, isNetwork: false };
+    }
     for (const [key, msg] of Object.entries(NETWORK_MESSAGES)) {
       if (error.message?.includes(key) || error.code?.includes(key)) {
         return { message: msg, shouldUpgrade: false, isNetwork: true };

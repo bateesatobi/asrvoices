@@ -76,8 +76,8 @@ const Voice2VoiceCard = () => {
   };
 
   const handleFileSelection = (file) => {
-    if (file.size > 100 * 1024 * 1024) { // 100MB limit
-      setError("File size should not exceed 100MB");
+    if (file.size > 500 * 1024 * 1024) { // 500MB limit
+      setError("File size should not exceed 500MB");
       return;
     }
     if (!file.type.startsWith("audio/")) {
@@ -290,7 +290,7 @@ const Voice2VoiceCard = () => {
                   Click to upload or drag and drop
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Supports WAV, MP3, M4A (Max 100MB)
+                  Supports WAV, MP3, M4A (Max 500MB)
                 </Typography>
                 <input
                   ref={fileInputRef}

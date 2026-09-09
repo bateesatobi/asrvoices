@@ -56,7 +56,7 @@ const VideoCard = () => {
   }, []);
 
   const handleFileSelection = (file) => {
-    if (file.size > 100 * 1024 * 1024) { setError("File size should not exceed 100MB"); return; }
+    if (file.size > 500 * 1024 * 1024) { setError("File size should not exceed 500MB"); return; }
     if (!file.type.startsWith("video/")) { setError("Please upload a valid video file"); return; }
     setSelectedFile(file);
     setError(null);
@@ -247,7 +247,7 @@ const VideoCard = () => {
                   <CloudUpload sx={{ fontSize: 26, color: '#E8A020' }} />
                 </Box>
                 <Box sx={{ color: '#111111', fontWeight: 600, fontSize: '0.95rem', mb: 0.5 }}>Click to upload or drag and drop</Box>
-                <Box sx={{ color: '#64748b', fontSize: '0.8rem' }}>MP4, AVI, MOV, WMV · Max 100MB</Box>
+                <Box sx={{ color: '#64748b', fontSize: '0.8rem' }}>MP4, AVI, MOV, WMV · Max 500MB</Box>
               </>
             )}
           </Box>

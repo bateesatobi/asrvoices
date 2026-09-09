@@ -176,7 +176,7 @@ export default function ComponentShowcase() {
           onClearFile={() => setSelectedFile(null)}
           accept="audio/*,video/*"
         >
-          Audio & video files, up to 100MB
+          Audio & video files, up to 500MB
         </ElevenLabsFileUpload>
       </ElevenLabsCard>
 

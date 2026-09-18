@@ -8,6 +8,25 @@ import { DEFAULT_ASR_LANG, toAsrLang } from '../../constants/asrLanguages';
 const SAMPLE_RATE = 16000;
 const BUFFER_SIZE = 4096;
 
+/** Linear resample Float32 PCM to a target rate (always send 16 kHz to ASR). */
+function downsampleToRate(floatSamples, inputRate, outputRate = SAMPLE_RATE) {
+  if (!floatSamples?.length) return floatSamples;
+  if (!inputRate || Math.abs(inputRate - outputRate) < 1) {
+    return floatSamples;
+  }
+  const ratio = inputRate / outputRate;
+  const outLength = Math.max(1, Math.floor(floatSamples.length / ratio));
+  const output = new Float32Array(outLength);
+  for (let i = 0; i < outLength; i += 1) {
+    const srcIndex = i * ratio;
+    const i0 = Math.floor(srcIndex);
+    const i1 = Math.min(i0 + 1, floatSamples.length - 1);
+    const t = srcIndex - i0;
+    output[i] = floatSamples[i0] * (1 - t) + floatSamples[i1] * t;
+  }
+  return output;
+}
+
 function floatTo16BitPCM(floatSamples) {
   const buffer = new ArrayBuffer(floatSamples.length * 2);
   const view = new DataView(buffer);
@@ -19,7 +38,14 @@ function floatTo16BitPCM(floatSamples) {
 }
 
 function eventText(event) {
-  return String(event?.text || event?.transcript || '').trim();
+  return String(
+    event?.text
+    || event?.transcript
+    || event?.partial
+    || event?.final
+    || event?.result
+    || ''
+  ).trim();
 }
 
 function isSpeechStart(event) {
@@ -31,14 +57,21 @@ function isSpeechStop(event) {
 }
 
 function isInterim(event) {
-  return event?.type === 'realtime' || (event?.text && event?.is_final === false);
+  if (event?.is_final === true || event?.speech_final === true) return false;
+  return (
+    event?.type === 'realtime'
+    || event?.type === 'partial'
+    || event?.type === 'interim'
+    || (Boolean(eventText(event)) && event?.is_final === false)
+  );
 }
 
 function isFinal(event) {
   return (
-    event?.type === 'fullSentence' ||
-    event?.is_final === true ||
-    event?.speech_final === true
+    event?.type === 'fullSentence'
+    || event?.type === 'final'
+    || event?.is_final === true
+    || event?.speech_final === true
   );
 }
 
@@ -212,6 +245,13 @@ export default function LiveTranscribePanel({
       }
       setInterim('');
       interimRef.current = '';
+      return;
+    }
+    // Fallback: any payload with text updates interim so unknown schemas still show.
+    const fallback = eventText(event);
+    if (fallback) {
+      interimRef.current = fallback;
+      setInterim(fallback);
     }
   }, []);
 
@@ -247,11 +287,13 @@ export default function LiveTranscribePanel({
     processor.connect(gain);
     gain.connect(audioContext.destination);
 
+    const inputRate = audioContext.sampleRate || SAMPLE_RATE;
     processor.onaudioprocess = (e) => {
       const socket = socketRef.current;
       if (!socket || socket.readyState !== WebSocket.OPEN || !readyRef.current) return;
       const samples = e.inputBuffer.getChannelData(0);
-      socket.send(floatTo16BitPCM(samples));
+      const pcm16k = downsampleToRate(samples, inputRate, SAMPLE_RATE);
+      socket.send(floatTo16BitPCM(pcm16k));
     };
 
     audioRef.current = {
@@ -272,7 +314,8 @@ export default function LiveTranscribePanel({
     }
     drawingRef.current = true;
     drawVisualizer();
-    sendJson({ type: 'config', sampleRate: audioContext.sampleRate, language: languageRef.current });
+    // Always advertise 16 kHz — we downsample before send regardless of AudioContext rate.
+    sendJson({ type: 'config', sampleRate: SAMPLE_RATE, language: languageRef.current });
   }, [drawVisualizer, sendJson]);
 
   const disconnect = useCallback(() => {
@@ -305,6 +348,7 @@ export default function LiveTranscribePanel({
       }
       if (payload?.type === 'ready') {
         readyRef.current = true;
+        sendJson({ type: 'config', sampleRate: SAMPLE_RATE, language: languageRef.current });
         sendJson({
           type: 'set_parameter',
           parameter: 'post_speech_silence_duration',

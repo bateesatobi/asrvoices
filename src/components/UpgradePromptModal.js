@@ -141,6 +141,9 @@ const FloatingIcon = styled(Box)(({ theme }) => ({
 const UpgradePromptModal = () => {
   const [open, setOpen] = useState(false);
   const [endpoint, setEndpoint] = useState('');
+  const [detailMessage, setDetailMessage] = useState('');
+  const [requiredCredits, setRequiredCredits] = useState(null);
+  const [walletBalance, setWalletBalance] = useState(null);
 
   const [pricingTiers, setPricingTiers] = useState(PAID_PLANS);
   const [isLoading, setIsLoading] = useState(false);
@@ -154,10 +157,25 @@ const UpgradePromptModal = () => {
 
   const onClose = () => setOpen(false);
 
+  const parseRequiredFromMessage = (msg) => {
+    if (!msg) return null;
+    const match = String(msg).match(/~?\s*([\d.]+)\s*credits?/i);
+    return match ? Number(match[1]) : null;
+  };
+
   useEffect(() => {
     const handleLimitExceeded = (e) => {
+      const detail = e.detail || {};
+      const message = detail.message || detail.detail || '';
       setOpen(true);
-      setEndpoint(e.detail?.endpoint || e.detail?.message || '');
+      setEndpoint(detail.endpoint || '');
+      setDetailMessage(typeof message === 'string' ? message : '');
+      setRequiredCredits(
+        detail.required != null
+          ? Number(detail.required)
+          : parseRequiredFromMessage(message)
+      );
+      setWalletBalance(detail.balance != null ? Number(detail.balance) : null);
     };
     window.addEventListener('subscription-limit-exceeded', handleLimitExceeded);
     window.addEventListener('show-upgrade-modal', handleLimitExceeded);
@@ -246,10 +264,10 @@ const UpgradePromptModal = () => {
                 </FloatingIcon>
                 <Box>
                   <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
-                    🚀 Top up credits
+                    Top up credits
                   </Typography>
                   <Typography variant="h6" sx={{ opacity: 0.9 }}>
-                    Jobs need a wallet balance before they start
+                    This job needs more credits in your wallet
                   </Typography>
                 </Box>
               </Box>
@@ -274,15 +292,23 @@ const UpgradePromptModal = () => {
               backdropFilter: 'blur(10px)'
             }}>
               <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                Wallet needs credits
+                Not enough credits
               </Typography>
               <Typography variant="body2" sx={{ opacity: 0.85, mb: 1 }}>
-                {endpoint
-                  ? `This action (${endpoint}) could not start because your balance is too low.`
-                  : 'This action could not start because your balance is too low.'}
+                {detailMessage
+                  || (endpoint
+                    ? `This action (${String(endpoint).replace(/^\/+/, '')}) could not start because your balance is too low.`
+                    : 'This action could not start because your balance is too low.')}
               </Typography>
+              {(requiredCredits != null || walletBalance != null) && (
+                <Typography variant="body2" sx={{ opacity: 0.95, fontWeight: 700, mb: 1 }}>
+                  {requiredCredits != null ? `Needs ~${requiredCredits} credits` : null}
+                  {requiredCredits != null && walletBalance != null ? ' · ' : null}
+                  {walletBalance != null ? `Wallet: ${walletBalance} credits` : null}
+                </Typography>
+              )}
               <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                Buy a one-time credit pack below. Credits never expire, and failed jobs are refunded.
+                Buy a one-time credit pack below ($5 / $15 / $40). Credits never expire, and failed jobs are refunded.
               </Typography>
             </Paper>
           </Box>
@@ -327,11 +353,16 @@ const UpgradePromptModal = () => {
                         <Typography variant="h4" sx={{ fontWeight: 800, color: getTierColor(tier.id) }}>
                           {tier.monthly}
                         </Typography>
+                        {tier.credits != null && (
+                          <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                            {Number(tier.credits).toLocaleString()} credits
+                          </Typography>
+                        )}
                       </Box>
                     </Box>
 
                     <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
-                      {tier.description}
+                      {tier.description || tier.cta || 'One-time credit pack'}
                     </Typography>
 
                     <List dense sx={{ mb: 3 }}>
@@ -366,7 +397,7 @@ const UpgradePromptModal = () => {
         {/* Benefits Section */}
         <Box sx={{ mt: 4, p: 3, bgcolor: 'rgba(245, 158, 11, 0.05)', borderRadius: '16px' }}>
           <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, textAlign: 'center' }}>
-            🎯 Why credits?
+            Why credits?
           </Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} md={4}>
@@ -374,10 +405,10 @@ const UpgradePromptModal = () => {
                 <SpeedIcon color="primary" />
                 <Box>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                    Lightning Fast
+                    Pay as you go
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Priority processing and faster response times
+                    Only spend when a job starts — no monthly plan required
                   </Typography>
                 </Box>
               </Box>
@@ -387,10 +418,10 @@ const UpgradePromptModal = () => {
                 <SecurityIcon color="primary" />
                 <Box>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                    Enterprise Security
+                    Never expire
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Bank-level security and data protection
+                    Credits stay in your wallet until you use them
                   </Typography>
                 </Box>
               </Box>
@@ -400,10 +431,10 @@ const UpgradePromptModal = () => {
                 <SupportIcon color="primary" />
                 <Box>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                    24/7 Support
+                    Failed jobs refunded
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Dedicated support team always ready to help
+                    If a job fails, credits return to your balance
                   </Typography>
                 </Box>
               </Box>

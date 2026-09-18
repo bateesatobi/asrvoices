@@ -75,7 +75,6 @@ export default function SynthesizeComponent() {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
   const [selectedSpeaker, setSelectedSpeaker] = useState(NEURAL_SPEAKERS[0]);
-  const [outputLang, setOutputLang] = useState(NEURAL_SPEAKERS[0].lang);
   const [textLang, setTextLang] = useState('en');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -158,7 +157,7 @@ export default function SynthesizeComponent() {
         const res = await ttsAPI.synthesizeText(
           text,
           selectedSpeaker.id,
-          outputLang,
+          textLang,
           userId,
           null,
           { ...pollOptions, textLang }
@@ -172,22 +171,22 @@ export default function SynthesizeComponent() {
           setResultDocId(res.doc_id);
           setResultSource('vocify');
         }
-        if (!dry && res.doc_id) await resolveAudioUrl(res.doc_id, outputLang);
+        if (!dry && res.doc_id) await resolveAudioUrl(res.doc_id, textLang);
         else if (!dry) throw new Error('No audio received');
       } else {
         if (!file) throw new Error('Upload a document to synthesize');
         if (file.size > MAX_DOC_MB * 1024 * 1024) throw new Error(`File must be under ${MAX_DOC_MB}MB`);
         const res = await ttsAPI.translateDocumentWithTTS(
           file,
-          outputLang,
-          [outputLang],
+          textLang,
+          [textLang],
           selectedSpeaker.id,
           userId,
           null,
           pollOptions
         );
-        const directUrl = res.translations?.[outputLang]?.dry_audio_path
-          || res.translations?.[outputLang]?.audio_file_path;
+        const directUrl = res.translations?.[textLang]?.dry_audio_path
+          || res.translations?.[textLang]?.audio_file_path;
         if (directUrl) {
           setDryAudioUrl(directUrl);
           setAudioUrl(directUrl);
@@ -195,7 +194,7 @@ export default function SynthesizeComponent() {
         if (res.doc_id) {
           setResultDocId(res.doc_id);
           setResultSource('document_tts');
-          if (!directUrl) await resolveAudioUrl(res.doc_id, outputLang, 'document');
+          if (!directUrl) await resolveAudioUrl(res.doc_id, textLang, 'document');
         } else throw new Error('No document ID received');
       }
       refreshBalance();
@@ -205,10 +204,16 @@ export default function SynthesizeComponent() {
       if (e.response?.status === 402) {
         window.dispatchEvent(
           new CustomEvent('subscription-limit-exceeded', {
-            detail: { message: e.response?.data?.detail || 'Insufficient credits.', status: 402 },
+            detail: {
+              message: e.response?.data?.detail || e.friendlyMessage || 'Insufficient credits.',
+              status: 402,
+              endpoint: e.config?.url || 'text-to-speech',
+              required: e.response?.data?.required_credits,
+              balance: e.response?.data?.balance,
+            },
           })
         );
-        setError(e.response?.data?.detail || 'Insufficient credits.');
+        setError(e.response?.data?.detail || e.friendlyMessage || 'Insufficient credits.');
       } else {
         setError(getFriendlyErrorMessage(e, 'Generation failed. Please try again.'));
       }
@@ -229,36 +234,20 @@ export default function SynthesizeComponent() {
           }}
           options={NEURAL_SPEAKERS.map((v) => ({
             value: v.id,
-            label: `${v.name} · native ${v.lang.toUpperCase()}`,
+            label: `${v.name} · ${v.lang.toUpperCase()} persona`,
           }))}
         />
-        {isTextMode && (
-          <>
-            <SettingSelect
-              label="Text language"
-              value={textLang}
-              onChange={(e) => setTextLang(e.target.value)}
-              options={NEURAL_LANGUAGES.filter((l) => l.code !== 'all').map((l) => ({
-                value: l.code,
-                label: l.name,
-              }))}
-            />
-            <Typography sx={{ fontSize: '0.75rem', color: '#888', px: 0.5, mt: -0.5 }}>
-              Language of the text you typed. The voice is chosen by the speaker above — Spark handles pronunciation.
-            </Typography>
-          </>
-        )}
         <SettingSelect
-          label="Output language"
-          value={outputLang}
-          onChange={(e) => setOutputLang(e.target.value)}
+          label="Text language"
+          value={textLang}
+          onChange={(e) => setTextLang(e.target.value)}
           options={NEURAL_LANGUAGES.filter((l) => l.code !== 'all').map((l) => ({
             value: l.code,
             label: l.name,
           }))}
         />
         <Typography sx={{ fontSize: '0.75rem', color: '#888', px: 0.5, mt: -0.5 }}>
-          Pick any speaker and choose which language they speak — they don&apos;t have to match.
+          Language of the text. Any speaker can read any language — the voice persona stays the same.
         </Typography>
       </SettingSection>
       <SoundtrackPickerSection
@@ -266,7 +255,7 @@ export default function SynthesizeComponent() {
         dryAudioUrl={dryAudioUrl}
         docId={resultDocId}
         source={resultSource}
-        lang={outputLang}
+        lang={textLang}
         userId={userId}
         onApplied={(url) => setAudioUrl(url)}
       />
@@ -311,7 +300,7 @@ export default function SynthesizeComponent() {
         bottomBar={
           <StudioPlayerBar
             voiceName={selectedSpeaker.name}
-            voiceLang={outputLang}
+            voiceLang={textLang}
             audioUrl={audioUrl}
             disabled={!audioUrl}
             onDownload={() => {

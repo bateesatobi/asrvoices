@@ -96,6 +96,13 @@ apiClient.interceptors.response.use(
           message: enriched.friendlyMessage,
           status: error.response.status,
           endpoint: error.config?.url,
+          detail: error.response?.data?.detail,
+          required: error.response?.data?.required_credits
+            ?? error.response?.data?.required
+            ?? null,
+          balance: error.response?.data?.balance
+            ?? error.response?.data?.credit_balance
+            ?? null,
         },
       }));
     } else if (error.response?.status === 403) {
@@ -661,12 +668,12 @@ export const ttsAPI = {
   synthesizeText: async (text, speakerId, language, userId, bgmTrack = null, options = {}) => {
     const formData = new FormData();
     formData.append('doc', text);
-    const speaker = NEURAL_SPEAKERS.find((s) => s.id === speakerId);
-    const lang = speaker?.lang || language || 'swa';
-    formData.append('source_lang', lang);
+    // Speak the text language as-is. Speaker identity is independent of language.
+    const speakLang = options.textLang || language || 'en';
+    formData.append('source_lang', speakLang);
     formData.append('speaker_name', speakerId);
-    formData.append('target_langs', lang);
-    formData.append('text_lang', options.textLang || 'en');
+    formData.append('target_langs', speakLang);
+    formData.append('text_lang', speakLang);
     formData.append('user_id', userId);
     if (bgmTrack) formData.append('bgm_track', bgmTrack);
 
@@ -679,14 +686,17 @@ export const ttsAPI = {
       const translations = job.result?.translations_with_tts;
       const audioUrl =
         job.result?.audio_url ||
+        translations?.[speakLang]?.audio_file_path ||
         translations?.[language]?.audio_file_path ||
         (translations &&
           Object.values(translations).find((t) => t && t.audio_file_path)?.audio_file_path);
       const dryUrl =
+        translations?.[speakLang]?.dry_audio_path ||
+        translations?.[speakLang]?.audio_file_path ||
         translations?.[language]?.dry_audio_path ||
         translations?.[language]?.audio_file_path ||
         audioUrl;
-      const langEntry = translations?.[language];
+      const langEntry = translations?.[speakLang] || translations?.[language];
       const ttsError =
         langEntry?.error ||
         (translations &&
@@ -706,6 +716,7 @@ export const ttsAPI = {
         audio_file_url: audioUrl,
         dry_audio_url: dryUrl,
         translations,
+        speak_lang: speakLang,
         status: 'completed',
       };
     }

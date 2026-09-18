@@ -6,7 +6,35 @@ import { realtimeTranscribeWsUrl } from '../../services/api';
 import { DEFAULT_ASR_LANG, toAsrLang } from '../../constants/asrLanguages';
 
 const SAMPLE_RATE = 16000;
-const BUFFER_SIZE = 4096;
+/** ~128ms frames at 16 kHz — lower latency than 4096 for fast turn-taking. */
+const BUFFER_SIZE = 2048;
+
+/** Presets tuned for world-class realtime meeting / conversation ASR. */
+export const LIVE_ASR_PRESETS = {
+  meeting: {
+    id: 'meeting',
+    label: 'Meeting',
+    // Longer endpointing so rapid micro-pauses don't chop mid-phrase.
+    silenceDuration: 0.85,
+    // Lower Silero sensitivity = catch quieter / overlapping speakers (RealtimeSTT convention).
+    vadSensitivity: 0.28,
+    hint: 'Fast talk, multiple speakers — resists cutting mid-sentence',
+  },
+  conversation: {
+    id: 'conversation',
+    label: 'Conversation',
+    silenceDuration: 0.55,
+    vadSensitivity: 0.35,
+    hint: 'Two-way chat with snappier sentence finals',
+  },
+  dictation: {
+    id: 'dictation',
+    label: 'Dictation',
+    silenceDuration: 1.1,
+    vadSensitivity: 0.45,
+    hint: 'Single speaker pausing between thoughts',
+  },
+};
 
 /** Linear resample Float32 PCM to a target rate (always send 16 kHz to ASR). */
 function downsampleToRate(floatSamples, inputRate, outputRate = SAMPLE_RATE) {
@@ -77,8 +105,9 @@ function isFinal(event) {
 
 export default function LiveTranscribePanel({
   language = DEFAULT_ASR_LANG,
-  silenceDuration = 0.5,
-  vadSensitivity = 0.4,
+  silenceDuration = LIVE_ASR_PRESETS.meeting.silenceDuration,
+  vadSensitivity = LIVE_ASR_PRESETS.meeting.vadSensitivity,
+  profile = 'meeting',
 }) {
   const [status, setStatus] = useState('idle');
   const [statusText, setStatusText] = useState('Click the microphone to start live recognition');
@@ -101,11 +130,15 @@ export default function LiveTranscribePanel({
   const languageRef = useRef(toAsrLang(language));
   const silenceRef = useRef(silenceDuration);
   const vadRef = useRef(vadSensitivity);
+  const profileRef = useRef(profile);
   const interimRef = useRef('');
+  const transcriptEndRef = useRef(null);
+  const pendingPcmRef = useRef([]);
 
   languageRef.current = toAsrLang(language);
   silenceRef.current = silenceDuration;
   vadRef.current = vadSensitivity;
+  profileRef.current = profile;
 
   const sendJson = useCallback((payload) => {
     const socket = socketRef.current;
@@ -255,21 +288,46 @@ export default function LiveTranscribePanel({
     }
   }, []);
 
+  const applyRealtimeParams = useCallback(() => {
+    const silence = Number(silenceRef.current);
+    const vad = Number(vadRef.current);
+    // Core endpointing + VAD (RealtimeSTT / Ateker control plane).
+    sendJson({ type: 'set_parameter', parameter: 'post_speech_silence_duration', value: silence });
+    sendJson({ type: 'set_parameter', parameter: 'silero_sensitivity', value: vad });
+    // Meeting-grade extras — ignored harmlessly if upstream lacks the key.
+    sendJson({ type: 'set_parameter', parameter: 'realtime_processing_pause', value: 0.02 });
+    sendJson({ type: 'set_parameter', parameter: 'min_length_of_recording', value: 0.25 });
+    sendJson({ type: 'set_parameter', parameter: 'min_gap_between_recordings', value: 0.05 });
+    sendJson({ type: 'set_parameter', parameter: 'pre_recording_buffer_duration', value: 0.35 });
+    sendJson({ type: 'set_parameter', parameter: 'silero_deactivity_detection', value: true });
+    sendJson({ type: 'set_parameter', parameter: 'beam_size', value: 5 });
+    if (profileRef.current === 'meeting') {
+      // Slightly more patience on trailing audio for overlapping speakers.
+      sendJson({ type: 'set_parameter', parameter: 'silero_use_onnx', value: true });
+    }
+  }, [sendJson]);
+
   const startMic = useCallback(async () => {
     const mediaStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         channelCount: 1,
-        echoCancellation: false,
-        noiseSuppression: false,
+        sampleRate: SAMPLE_RATE,
+        // Meeting rooms: suppress echo / HVAC noise; keep AGC for distant speakers.
+        echoCancellation: true,
+        noiseSuppression: true,
         autoGainControl: true,
+        // Chromium hint for voice communication (meetings).
+        googEchoCancellation: true,
+        googNoiseSuppression: true,
+        googAutoGainControl: true,
       },
     });
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     let audioContext;
     try {
-      audioContext = new AudioContextClass({ sampleRate: SAMPLE_RATE });
+      audioContext = new AudioContextClass({ sampleRate: SAMPLE_RATE, latencyHint: 'interactive' });
     } catch (_) {
-      audioContext = new AudioContextClass();
+      audioContext = new AudioContextClass({ latencyHint: 'interactive' });
     }
     if (audioContext.state === 'suspended') {
       await audioContext.resume();
@@ -288,12 +346,25 @@ export default function LiveTranscribePanel({
     gain.connect(audioContext.destination);
 
     const inputRate = audioContext.sampleRate || SAMPLE_RATE;
+    pendingPcmRef.current = [];
     processor.onaudioprocess = (e) => {
       const socket = socketRef.current;
-      if (!socket || socket.readyState !== WebSocket.OPEN || !readyRef.current) return;
       const samples = e.inputBuffer.getChannelData(0);
       const pcm16k = downsampleToRate(samples, inputRate, SAMPLE_RATE);
-      socket.send(floatTo16BitPCM(pcm16k));
+      const frame = floatTo16BitPCM(pcm16k);
+      if (!socket || socket.readyState !== WebSocket.OPEN || !readyRef.current) {
+        // Buffer a short lead-in so the first words of a meeting aren't dropped
+        // while the ASR engine is still finishing handshake.
+        const queue = pendingPcmRef.current;
+        queue.push(frame);
+        if (queue.length > 40) queue.shift();
+        return;
+      }
+      if (pendingPcmRef.current.length) {
+        pendingPcmRef.current.forEach((buffered) => socket.send(buffered));
+        pendingPcmRef.current = [];
+      }
+      socket.send(frame);
     };
 
     audioRef.current = {
@@ -314,7 +385,6 @@ export default function LiveTranscribePanel({
     }
     drawingRef.current = true;
     drawVisualizer();
-    // Always advertise 16 kHz — we downsample before send regardless of AudioContext rate.
     sendJson({ type: 'config', sampleRate: SAMPLE_RATE, language: languageRef.current });
   }, [drawVisualizer, sendJson]);
 
@@ -349,18 +419,17 @@ export default function LiveTranscribePanel({
       if (payload?.type === 'ready') {
         readyRef.current = true;
         sendJson({ type: 'config', sampleRate: SAMPLE_RATE, language: languageRef.current });
-        sendJson({
-          type: 'set_parameter',
-          parameter: 'post_speech_silence_duration',
-          value: Number(silenceRef.current),
-        });
-        sendJson({
-          type: 'set_parameter',
-          parameter: 'silero_sensitivity',
-          value: Number(vadRef.current),
-        });
+        applyRealtimeParams();
+        if (pendingPcmRef.current.length && socket.readyState === WebSocket.OPEN) {
+          pendingPcmRef.current.forEach((buffered) => socket.send(buffered));
+          pendingPcmRef.current = [];
+        }
         setStatus('live');
-        setStatusText('Listening — speak now');
+        setStatusText(
+          profileRef.current === 'meeting'
+            ? 'Meeting mode — listening for fast / overlapping speech'
+            : 'Listening — speak now'
+        );
         return;
       }
       handleServerEvent(payload);
@@ -387,7 +456,7 @@ export default function LiveTranscribePanel({
       setStatus('error');
       closeSocket();
     }
-  }, [closeSocket, handleServerEvent, sendJson, startMic, stopMic]);
+  }, [applyRealtimeParams, closeSocket, handleServerEvent, sendJson, startMic, stopMic]);
 
   const toggleLive = useCallback(() => {
     if (status === 'live' || status === 'connecting') {
@@ -404,21 +473,8 @@ export default function LiveTranscribePanel({
 
   useEffect(() => {
     if (status !== 'live') return;
-    sendJson({
-      type: 'set_parameter',
-      parameter: 'post_speech_silence_duration',
-      value: Number(silenceDuration),
-    });
-  }, [sendJson, silenceDuration, status]);
-
-  useEffect(() => {
-    if (status !== 'live') return;
-    sendJson({
-      type: 'set_parameter',
-      parameter: 'silero_sensitivity',
-      value: Number(vadSensitivity),
-    });
-  }, [sendJson, status, vadSensitivity]);
+    applyRealtimeParams();
+  }, [applyRealtimeParams, silenceDuration, status, vadSensitivity, profile]);
 
   useEffect(() => () => {
     stopMic();
@@ -428,6 +484,10 @@ export default function LiveTranscribePanel({
   useEffect(() => {
     stopVisualizer();
   }, [stopVisualizer]);
+
+  useEffect(() => {
+    transcriptEndRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'end' });
+  }, [finals, interim]);
 
   const isLive = status === 'live' || status === 'connecting';
 
@@ -471,7 +531,7 @@ export default function LiveTranscribePanel({
       <Box
         sx={{
           minHeight: 220,
-          maxHeight: 320,
+          maxHeight: 360,
           overflowY: 'auto',
           border: '1px solid #e8e8e8',
           borderRadius: '12px',
@@ -486,8 +546,9 @@ export default function LiveTranscribePanel({
           <Stack alignItems="center" justifyContent="center" sx={{ py: 5, color: '#999' }} spacing={1}>
             <GraphicEq sx={{ fontSize: 28, opacity: 0.5 }} />
             <Typography sx={{ fontSize: '0.875rem', fontWeight: 600 }}>No live transcripts yet</Typography>
-            <Typography sx={{ fontSize: '0.75rem', maxWidth: 280, textAlign: 'center' }}>
-              Connect and speak. Interim text appears as you talk; finals commit after a short silence.
+            <Typography sx={{ fontSize: '0.75rem', maxWidth: 300, textAlign: 'center' }}>
+              Meeting mode streams partials as people talk quickly. Sentences finalize after a brief pause —
+              not mid-phrase.
             </Typography>
           </Stack>
         ) : null}
@@ -512,31 +573,27 @@ export default function LiveTranscribePanel({
         {interim ? (
           <Box
             sx={{
-              border: '1px solid rgba(232,160,32,0.35)',
+              border: '1px dashed rgba(232,160,32,0.5)',
               bgcolor: 'rgba(232,160,32,0.06)',
               borderRadius: '10px',
               p: 1.5,
             }}
           >
-            <Typography sx={{ fontSize: '0.65rem', color: '#C47F10', fontWeight: 800, letterSpacing: '0.04em', mb: 0.5 }}>
-              INTERIM
+            <Typography sx={{ fontSize: '0.65rem', color: '#E8A020', fontWeight: 800, letterSpacing: '0.04em', mb: 0.5 }}>
+              LIVE
             </Typography>
             <Typography sx={{ fontSize: '0.9375rem', color: '#1a1a1a', lineHeight: 1.55 }}>{interim}</Typography>
           </Box>
         ) : null}
+        <div ref={transcriptEndRef} />
       </Box>
 
-      <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
+      <Stack direction="row" spacing={1} sx={{ mt: 1.5 }} justifyContent="center">
         <ElevenLabsButton
           variant="outlined"
-          disabled={!isLive}
-          onClick={() => sendJson({ type: 'call_method', method: 'abort' })}
-        >
-          Abort speech
-        </ElevenLabsButton>
-        <ElevenLabsButton
-          variant="outlined"
+          size="small"
           startIcon={<DeleteOutline />}
+          disabled={!finals.length && !interim}
           onClick={() => {
             setFinals([]);
             setInterim('');

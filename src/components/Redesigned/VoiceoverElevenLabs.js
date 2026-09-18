@@ -366,7 +366,7 @@ export default function VoiceoverElevenLabs({ userId: userIdProp }) {
     <ElevenLabsSettingsPanel sx={{ border: 'none', boxShadow: 'none', borderRadius: 0 }}>
       <SettingSection title="Voice">
         <SettingSelect
-          label="Output language"
+          label="Text language"
           value={selectedLang}
           onChange={(e) => {
             setSelectedLang(e.target.value);
@@ -383,11 +383,11 @@ export default function VoiceoverElevenLabs({ userId: userIdProp }) {
           }}
           options={NEURAL_SPEAKERS.map((v) => ({
             value: v.id,
-            label: `${v.name} · native ${v.lang.toUpperCase()}`,
+            label: `${v.name} · ${v.lang.toUpperCase()} persona`,
           }))}
         />
         <Typography sx={{ fontSize: '0.75rem', color: '#888', px: 0.5, mt: -0.5 }}>
-          Choose who speaks and which language they use — independently.
+          Language of the narration text. Any speaker can read any language.
         </Typography>
       </SettingSection>
       {mode === 0 ? (

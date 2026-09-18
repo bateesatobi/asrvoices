@@ -20,7 +20,7 @@ import {
 } from '../ElevenLabsUI';
 import StudioPageShell from '../Layout/StudioPageShell';
 import StudioHistorySection from '../Layout/StudioHistorySection';
-import LiveTranscribePanel from './LiveTranscribePanel';
+import LiveTranscribePanel, { LIVE_ASR_PRESETS } from './LiveTranscribePanel';
 import { STUDIO_VISUALS } from '../../data/studioVisuals';
 import { transcriptionAPI, videoAPI, getFriendlyErrorMessage } from '../../services/api';
 import { registerTrackedJob } from '../../hooks/useBackgroundJobs';
@@ -54,10 +54,18 @@ export default function TranscribeElevenLabs() {
   const [sourceLang, setSourceLang] = useState(DEFAULT_ASR_LANG);
   const [asrLanguages, setAsrLanguages] = useState(ASR_LANGUAGES);
   const [responseFormat, setResponseFormat] = useState('json');
-  const [silenceDuration, setSilenceDuration] = useState(0.5);
-  const [vadSensitivity, setVadSensitivity] = useState(0.4);
+  const [liveProfile, setLiveProfile] = useState('meeting');
+  const [silenceDuration, setSilenceDuration] = useState(LIVE_ASR_PRESETS.meeting.silenceDuration);
+  const [vadSensitivity, setVadSensitivity] = useState(LIVE_ASR_PRESETS.meeting.vadSensitivity);
   const [loading, setLoading] = useState(false);
   const [snack, setSnack] = useState({ open: false, msg: '', sev: 'success' });
+
+  const applyLivePreset = (presetId) => {
+    const preset = LIVE_ASR_PRESETS[presetId] || LIVE_ASR_PRESETS.meeting;
+    setLiveProfile(preset.id);
+    setSilenceDuration(preset.silenceDuration);
+    setVadSensitivity(preset.vadSensitivity);
+  };
 
   useEffect(() => {
     transcriptionAPI.getLanguages()
@@ -133,22 +141,34 @@ export default function TranscribeElevenLabs() {
           />
         ) : (
           <>
+            <SettingSelect
+              label="Listening profile"
+              value={liveProfile}
+              onChange={(e) => applyLivePreset(e.target.value)}
+              options={Object.values(LIVE_ASR_PRESETS).map((p) => ({
+                value: p.id,
+                label: `${p.label} — ${p.hint}`,
+              }))}
+            />
             <SettingSlider
-              label="Silence timeout"
+              label="Silence before finalize (s)"
               value={Number(silenceDuration.toFixed(2))}
               onChange={(_, val) => setSilenceDuration(val)}
-              min={0.2}
+              min={0.25}
               max={2}
               step={0.05}
             />
             <SettingSlider
-              label="VAD sensitivity"
+              label="Speech sensitivity"
               value={Number(vadSensitivity.toFixed(2))}
               onChange={(_, val) => setVadSensitivity(val)}
               min={0.1}
               max={0.9}
               step={0.05}
             />
+            <Typography sx={{ fontSize: '0.72rem', color: '#888', px: 0.5, mt: -0.5, lineHeight: 1.4 }}>
+              Meeting profile keeps streaming while people talk fast. Raise silence if phrases are cut early; lower sensitivity if soft speakers are missed.
+            </Typography>
           </>
         )}
       </SettingSection>
@@ -186,7 +206,7 @@ export default function TranscribeElevenLabs() {
           title: 'Speech to text',
           subtitle: mode === 0
             ? 'Drop a recording onto the studio still — history stays a list below.'
-            : 'Speak in real time. Interim text streams as you talk; finals commit after silence.',
+            : 'Meeting-ready live recognition — streams as people talk fast; finals after a short pause.',
           height: mode === 1 ? 520 : 320,
           children: (
             <Box
@@ -224,6 +244,7 @@ export default function TranscribeElevenLabs() {
                   language={sourceLang}
                   silenceDuration={silenceDuration}
                   vadSensitivity={vadSensitivity}
+                  profile={liveProfile}
                 />
               )}
             </Box>
